@@ -1,0 +1,371 @@
+format_version = 1
+
+welcome_message = """
+欢迎来到 ROS2lings！
+
+你将通过修复一系列"坏掉的" ROS2 程序来学习 ROS2 核心概念。
+每个练习都是一个独立的 ROS2 包，包含 TODO 标记指引你修改。
+
+快捷键: q=退出, h=提示, l=当前练习, n=跳过
+"""
+
+final_message = """
+恭喜！你已经完成了 ROS2lings 的所有练习！
+
+你现在掌握了:
+- ROS2 节点、话题、发布/订阅
+- 服务、Action 客户端/服务器
+- 自定义消息、QoS、组件化节点
+
+继续探索 ROS2 的更深层次吧！
+"""
+
+# ── Module 01: Nodes & Topics (15 exercises) ──
+
+[[exercises]]
+name = "01_hello_node"
+dir = "01_nodes/01_hello_node"
+module = "Nodes & Topics"
+mode = "fix"
+language = "cpp"
+difficulty = 1
+estimated_minutes = 5
+hint_count = 3
+test = true
+hint = "rclcpp::init() 需要 argc 和 argv 两个参数。节点要用 std::make_shared 创建。"
+
+[[exercises]]
+name = "02_first_publisher"
+dir = "01_nodes/02_first_publisher"
+module = "Nodes & Topics"
+mode = "fix"
+language = "cpp"
+difficulty = 1
+estimated_minutes = 10
+hint_count = 3
+depends_on = ["01_hello_node"]
+test = true
+hint = "create_publisher 需要话题名和 QoS 深度。Timer 回调用 lambda 或 std::bind。"
+
+[[exercises]]
+name = "03_first_subscriber"
+dir = "01_nodes/03_first_subscriber"
+module = "Nodes & Topics"
+mode = "fix"
+language = "cpp"
+difficulty = 1
+estimated_minutes = 10
+hint_count = 3
+depends_on = ["02_first_publisher"]
+test = true
+hint = "create_subscription 需要话题名、QoS 和回调函数。回调参数类型是消息的 SharedPtr。"
+
+[[exercises]]
+name = "04_pubsub_connect"
+dir = "01_nodes/04_pubsub_connect"
+module = "Nodes & Topics"
+mode = "implement"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["03_first_subscriber"]
+test = true
+hint = "你需要创建一个发布者节点和一个订阅者节点，让它们通过同一个话题通信。"
+
+[[exercises]]
+name = "05_custom_message"
+dir = "01_nodes/05_custom_message"
+module = "Nodes & Topics"
+mode = "implement"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["04_pubsub_connect"]
+test = true
+hint = "在 msg/ 目录下创建 .msg 文件，在 CMakeLists.txt 中用 rosidl_generate_interfaces 生成。"
+
+[[exercises]]
+name = "06_multi_topic"
+dir = "01_nodes/06_multi_topic"
+module = "Nodes & Topics"
+mode = "implement"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 20
+hint_count = 3
+depends_on = ["05_custom_message"]
+test = true
+hint = "一个节点可以同时有多个 publisher 和 subscriber，分别订阅不同的话题。"
+
+[[exercises]]
+name = "07_topic_introspection"
+dir = "01_nodes/07_topic_introspection"
+module = "Nodes & Topics"
+mode = "explore"
+language = "cpp"
+difficulty = 1
+estimated_minutes = 10
+hint_count = 2
+depends_on = ["04_pubsub_connect"]
+test = true
+hint = "使用 ros2 topic list、ros2 topic info、ros2 topic echo 来检查话题。"
+
+[[exercises]]
+name = "08_node_lifecycle_basics"
+dir = "01_nodes/08_node_lifecycle_basics"
+module = "Nodes & Topics"
+mode = "explore"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 2
+depends_on = ["01_hello_node"]
+test = true
+hint = "rclcpp::Node 构造函数内部会创建 rcl_node_t，注册到 context，分配回调组。"
+
+[[exercises]]
+name = "09_hello_node_py"
+dir = "01_nodes/09_hello_node_py"
+module = "Nodes & Topics"
+mode = "fix"
+language = "python"
+difficulty = 1
+estimated_minutes = 5
+hint_count = 3
+test = true
+hint = "rclpy.init() 初始化，Node('name') 创建节点，rclpy.spin(node) 运行。"
+
+[[exercises]]
+name = "10_publisher_py"
+dir = "01_nodes/10_publisher_py"
+module = "Nodes & Topics"
+mode = "fix"
+language = "python"
+difficulty = 1
+estimated_minutes = 10
+hint_count = 3
+depends_on = ["09_hello_node_py"]
+test = true
+hint = "self.create_publisher(String, 'topic', 10) 创建发布者。Timer 用 self.create_timer。"
+
+[[exercises]]
+name = "11_subscriber_py"
+dir = "01_nodes/11_subscriber_py"
+module = "Nodes & Topics"
+mode = "fix"
+language = "python"
+difficulty = 1
+estimated_minutes = 10
+hint_count = 3
+depends_on = ["10_publisher_py"]
+test = true
+hint = "self.create_subscription(String, 'topic', callback, 10) 创建订阅者。"
+
+[[exercises]]
+name = "12_qos_mismatch"
+dir = "01_nodes/12_qos_mismatch"
+module = "Nodes & Topics"
+mode = "debug"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["03_first_subscriber"]
+test = true
+hint = "Publisher 和 Subscriber 的 QoS 策略必须兼容。检查 reliability 和 durability 设置。"
+
+[[exercises]]
+name = "13_component_node"
+dir = "01_nodes/13_component_node"
+module = "Nodes & Topics"
+mode = "implement"
+language = "cpp"
+difficulty = 3
+estimated_minutes = 20
+hint_count = 3
+depends_on = ["04_pubsub_connect"]
+test = true
+hint = "组件节点继承 rclcpp::Node，在构造函数中初始化，用 RCLCPP_COMPONENTS_REGISTER_NODE 注册。"
+
+[[exercises]]
+name = "14_namespace_remap"
+dir = "01_nodes/14_namespace_remap"
+module = "Nodes & Topics"
+mode = "fix"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 10
+hint_count = 3
+depends_on = ["04_pubsub_connect"]
+test = true
+hint = "NodeOptions 可以设置命名空间。话题重映射通过 remap 参数实现。"
+
+[[exercises]]
+name = "15_multi_node_process"
+dir = "01_nodes/15_multi_node_process"
+module = "Nodes & Topics"
+mode = "implement"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["04_pubsub_connect"]
+test = true
+hint = "多个节点可以共享一个 Executor。用 executor.add_node() 添加，executor.spin() 运行。"
+
+# ── Module 02: Services & Actions (12 exercises) ──
+
+[[exercises]]
+name = "16_first_service"
+dir = "02_services/01_first_service"
+module = "Services & Actions"
+mode = "fix"
+language = "cpp"
+difficulty = 1
+estimated_minutes = 10
+hint_count = 3
+test = true
+hint = "create_service 需要服务名和回调。回调签名: (request, response) -> void。"
+
+[[exercises]]
+name = "17_service_client"
+dir = "02_services/02_service_client"
+module = "Services & Actions"
+mode = "fix"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["16_first_service"]
+test = true
+hint = "异步调用: client->async_send_request(request)。用 rclcpp::spin_until_future_complete 等待。"
+
+[[exercises]]
+name = "18_service_pair"
+dir = "02_services/03_service_pair"
+module = "Services & Actions"
+mode = "implement"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 20
+hint_count = 3
+depends_on = ["17_service_client"]
+test = true
+hint = "实现一个 AddTwoInts 服务: server 接收两个整数并返回它们的和。"
+
+[[exercises]]
+name = "19_custom_srv"
+dir = "02_services/04_custom_srv"
+module = "Services & Actions"
+mode = "implement"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["18_service_pair"]
+test = true
+hint = "在 srv/ 目录下创建 .srv 文件。格式: request 字段 --- response 字段。"
+
+[[exercises]]
+name = "20_service_py"
+dir = "02_services/05_service_py"
+module = "Services & Actions"
+mode = "fix"
+language = "python"
+difficulty = 1
+estimated_minutes = 10
+hint_count = 3
+test = true
+hint = "self.create_service(AddTwoInts, 'service_name', callback)。回调: (request, response) -> response。"
+
+[[exercises]]
+name = "21_first_action_server"
+dir = "02_services/06_first_action_server"
+module = "Services & Actions"
+mode = "fix"
+language = "cpp"
+difficulty = 3
+estimated_minutes = 20
+hint_count = 3
+depends_on = ["16_first_service"]
+test = true
+hint = "ActionServer 需要 handle_goal、handle_cancel、handle_accepted 三个回调。"
+
+[[exercises]]
+name = "22_action_client"
+dir = "02_services/07_action_client"
+module = "Services & Actions"
+mode = "fix"
+language = "cpp"
+difficulty = 3
+estimated_minutes = 20
+hint_count = 3
+depends_on = ["21_first_action_server"]
+test = true
+hint = "async_send_goal 发送目标。通过 GoalHandleFibonacci::SharedPtr 获取反馈和结果。"
+
+[[exercises]]
+name = "23_action_complete"
+dir = "02_services/08_action_complete"
+module = "Services & Actions"
+mode = "implement"
+language = "cpp"
+difficulty = 3
+estimated_minutes = 25
+hint_count = 3
+depends_on = ["22_action_client"]
+test = true
+hint = "实现完整的 Fibonacci Action: server 计算并发送中间反馈，client 可以取消目标。"
+
+[[exercises]]
+name = "24_custom_action"
+dir = "02_services/09_custom_action"
+module = "Services & Actions"
+mode = "implement"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["23_action_complete"]
+test = true
+hint = "在 action/ 目录下创建 .action 文件。格式: goal --- result --- feedback。"
+
+[[exercises]]
+name = "25_action_py"
+dir = "02_services/10_action_py"
+module = "Services & Actions"
+mode = "fix"
+language = "python"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+test = true
+hint = "ActionServer(self, Fibonacci, 'fibonacci', execute_callback=self.execute_callback)。"
+
+[[exercises]]
+name = "26_service_introspection"
+dir = "02_services/11_service_introspection"
+module = "Services & Actions"
+mode = "explore"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 10
+hint_count = 2
+depends_on = ["18_service_pair"]
+test = true
+hint = "使用 ros2 service list、ros2 service type、ros2 service call 检查服务。"
+
+[[exercises]]
+name = "27_action_state_machine"
+dir = "02_services/12_action_state_machine"
+module = "Services & Actions"
+mode = "debug"
+language = "cpp"
+difficulty = 3
+estimated_minutes = 20
+hint_count = 3
+depends_on = ["23_action_complete"]
+test = true
+hint = "Action 有严格的状态转换: ACCEPTED → EXECUTING → SUCCEEDED/ABORTED/CANCELED。"
