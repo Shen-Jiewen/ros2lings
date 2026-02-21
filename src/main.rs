@@ -2,6 +2,9 @@ mod cmd;
 mod info_file;
 mod app_state;
 mod exercise;
+mod ros2_env;
+mod verify;
+mod output;
 
 use clap::{Parser, Subcommand};
 
