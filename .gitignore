@@ -2,3 +2,8 @@
 .ros2lings-state.txt
 /tmp/ros2lings_build
 /tmp/ros2lings_install
+/build
+/install
+/log
+__pycache__/
+*.pyc
