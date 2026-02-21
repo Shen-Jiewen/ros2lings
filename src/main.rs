@@ -1,4 +1,7 @@
 mod cmd;
+mod info_file;
+mod app_state;
+mod exercise;
 
 use clap::{Parser, Subcommand};
 
