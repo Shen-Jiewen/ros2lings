@@ -5,6 +5,9 @@ mod exercise;
 mod ros2_env;
 mod verify;
 mod output;
+mod hint;
+mod explain;
+mod watch;
 
 use clap::{Parser, Subcommand};
 
