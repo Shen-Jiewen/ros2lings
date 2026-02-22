@@ -63,15 +63,19 @@ impl VerifyPipeline {
         // so exercises depending on custom msgs/srvs/actions can resolve their deps.
         let interfaces_dir = self.project_root.join("exercises/ros2lings_interfaces");
         let paths = if interfaces_dir.is_dir() {
-            format!("{} {}", exercise_path.display(), interfaces_dir.display())
+            format!(
+                "'{}' '{}'",
+                exercise_path.display(),
+                interfaces_dir.display()
+            )
         } else {
-            format!("{}", exercise_path.display())
+            format!("'{}'", exercise_path.display())
         };
 
         let shell_cmd = format!(
             "{}colcon build \
              --paths {paths} \
-             --packages-up-to {pkg} \
+             --packages-up-to '{pkg}' \
              --build-base /tmp/ros2lings_build \
              --install-base /tmp/ros2lings_install \
              --event-handlers console_direct+ \
@@ -90,12 +94,11 @@ impl VerifyPipeline {
         let pkg = exercise.info.package_name();
         let shell_cmd = format!(
             "{}colcon test \
-             --packages-select {} \
+             --packages-select '{pkg}' \
              --build-base /tmp/ros2lings_build \
              --install-base /tmp/ros2lings_install \
              --event-handlers console_direct+",
             self.ros2_env.shell_prefix(),
-            pkg,
         );
 
         Command::new("bash")
@@ -109,9 +112,8 @@ impl VerifyPipeline {
         let pkg = exercise.info.package_name();
         let shell_cmd = format!(
             "{}colcon test-result \
-             --test-result-base /tmp/ros2lings_build/{}",
+             --test-result-base '/tmp/ros2lings_build/{pkg}'",
             self.ros2_env.shell_prefix(),
-            pkg,
         );
 
         Command::new("bash")

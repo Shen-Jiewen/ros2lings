@@ -23,13 +23,22 @@ impl Exercise {
         self.exercises_root.join(&self.info.dir)
     }
 
-    /// Returns the first matching source file (for display / "open the exercise").
+    /// Returns the most relevant source file for the user to edit.
+    /// Prefers the file that still has the done marker (the one needing work),
+    /// falling back to the first candidate file.
     pub fn source_file(&self) -> Result<PathBuf> {
         let files = self.all_source_files()?;
-        files
-            .into_iter()
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("No source file found in exercise '{}'", self.info.name))
+        if files.is_empty() {
+            anyhow::bail!("No source file found in exercise '{}'", self.info.name);
+        }
+        // Prefer the file with the done marker (the file the user needs to edit)
+        for f in &files {
+            if Self::has_done_marker(f).unwrap_or(false) {
+                return Ok(f.clone());
+            }
+        }
+        // No marker found — return the first candidate
+        Ok(files.into_iter().next().unwrap())
     }
 
     /// Returns ALL candidate source files across all search directories for this language.
@@ -304,10 +313,45 @@ mod tests {
             hint: String::new(),
         };
         let ex = Exercise::new(info, tmp.path().to_path_buf());
-        // source_file() returns the first match (src/node.py)
-        assert!(ex.source_file().unwrap().to_str().unwrap().contains("src"));
-        // but any_done_marker() must still detect the launch marker
+        // source_file() now prefers the file with the marker (launch/first.launch.py)
+        let source = ex.source_file().unwrap();
+        assert!(
+            source.to_str().unwrap().contains("launch"),
+            "Expected launch file, got: {}",
+            source.display()
+        );
+        // any_done_marker() also detects it
         assert!(ex.any_done_marker().unwrap());
+    }
+
+    #[test]
+    fn test_source_file_falls_back_to_first_when_no_marker() {
+        let tmp = TempDir::new().unwrap();
+        let src_dir = tmp.path().join("03_launch/done/src");
+        let launch_dir = tmp.path().join("03_launch/done/launch");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::create_dir_all(&launch_dir).unwrap();
+        // Both files clean — no markers
+        fs::write(src_dir.join("node.py"), "import rclpy").unwrap();
+        fs::write(launch_dir.join("app.launch.py"), "from launch import LD").unwrap();
+
+        let info = ExerciseInfo {
+            name: "done".to_string(),
+            dir: "03_launch/done".to_string(),
+            module: "Launch".to_string(),
+            mode: ExerciseMode::Fix,
+            language: Language::Python,
+            difficulty: 1,
+            estimated_minutes: 5,
+            hint_count: 1,
+            depends_on: vec![],
+            test: true,
+            hint: String::new(),
+        };
+        let ex = Exercise::new(info, tmp.path().to_path_buf());
+        // No marker → returns first candidate (src/)
+        let source = ex.source_file().unwrap();
+        assert!(source.to_str().unwrap().contains("src"));
     }
 
     #[test]

@@ -28,7 +28,7 @@ cargo install --path .
 source /opt/ros/humble/setup.bash
 
 # Start the interactive watch mode
-ros2lings watch
+ros2lings
 
 # Other commands
 ros2lings list          # Show all exercises
@@ -121,7 +121,7 @@ ros2lings reset <name>  # Reset an exercise to its original state
 
 ## How It Works
 
-1. `ros2lings watch` presents you with the first unsolved exercise
+1. `ros2lings` presents you with the first unsolved exercise
 2. Open the exercise source file and fix the `TODO` items
 3. ROS2lings detects your changes, rebuilds with `colcon`, and runs tests
 4. When tests pass, you automatically advance to the next exercise

@@ -44,15 +44,18 @@ fn run_watch_loop(
     pipeline: &VerifyPipeline,
 ) -> Result<()> {
     let (tx, rx) = mpsc::channel();
-    let tx_file = tx.clone();
+    let tx_fs = tx.clone();
 
     let mut debouncer = new_debouncer(
         Duration::from_millis(800),
         move |res: notify_debouncer_mini::DebounceEventResult| {
             if let Ok(events) = res {
                 for event in events {
-                    if event.kind == DebouncedEventKind::Any {
-                        let _ = tx_file.send(WatchEvent::FileChanged(event.path));
+                    match event.kind {
+                        DebouncedEventKind::Any | DebouncedEventKind::AnyContinuous => {
+                            let _ = tx_fs.send(WatchEvent::FileChanged(event.path));
+                        }
+                        _ => {}
                     }
                 }
             }
