@@ -5,6 +5,7 @@ use crate::ros2_env::Ros2Env;
 use crate::verify::{VerifyPipeline, VerifyResult};
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
+use crossterm::terminal;
 use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
@@ -29,11 +30,24 @@ pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
 
     show_current_exercise(state, &exercises_root);
 
+    // Enable raw mode so single keypresses are delivered immediately (no Enter needed).
+    terminal::enable_raw_mode()?;
+    let result = run_watch_loop(project_root, state, &exercises_root, &pipeline);
+    terminal::disable_raw_mode()?;
+    result
+}
+
+fn run_watch_loop(
+    _project_root: &Path,
+    state: &mut AppState,
+    exercises_root: &Path,
+    pipeline: &VerifyPipeline,
+) -> Result<()> {
     let (tx, rx) = mpsc::channel();
     let tx_file = tx.clone();
 
     let mut debouncer = new_debouncer(
-        Duration::from_millis(300),
+        Duration::from_millis(800),
         move |res: notify_debouncer_mini::DebounceEventResult| {
             if let Ok(events) = res {
                 for event in events {
@@ -46,7 +60,7 @@ pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
     )?;
 
     debouncer.watcher().watch(
-        &exercises_root,
+        exercises_root,
         notify_debouncer_mini::notify::RecursiveMode::Recursive,
     )?;
 
@@ -80,14 +94,17 @@ pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
 
                 if path.starts_with(&current_dir) {
                     if let Some(ext) = path.extension() {
-                        if let Some("cpp" | "py" | "c" | "h" | "hpp" | "urdf" | "xacro" | "xml" | "yaml" | "yml") = ext.to_str() {
+                        if let Some("cpp" | "py" | "c" | "h" | "hpp" | "urdf" | "xacro" | "xml" | "yaml" | "yml" | "srv" | "msg" | "action") = ext.to_str() {
+                            // Disable raw mode for clean println output
+                            let _ = terminal::disable_raw_mode();
                             println!();
                             output::print_info(&format!(
                                 "File changed: {}",
                                 path.file_name().unwrap_or_default().to_string_lossy()
                             ));
                             last_verify = Instant::now();
-                            run_verify(&pipeline, state, &exercises_root)?;
+                            run_verify(pipeline, state, exercises_root)?;
+                            let _ = terminal::enable_raw_mode();
 
                             // Drain any queued file events accumulated during verification
                             while rx.try_recv().is_ok() {}
@@ -97,14 +114,16 @@ pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
             }
             Ok(WatchEvent::Key(key)) => match key.code {
                 KeyCode::Char('q') => {
+                    let _ = terminal::disable_raw_mode();
                     println!();
                     output::print_info("Goodbye! Keep learning ROS2!");
                     break;
                 }
                 KeyCode::Char('h') => {
+                    let _ = terminal::disable_raw_mode();
                     let exercise = state.current_exercise().clone();
                     let hint_level = state.next_hint_level(&exercise.name);
-                    match crate::hint::show_hint(&exercise, &exercises_root, hint_level) {
+                    match crate::hint::show_hint(&exercise, exercises_root, hint_level) {
                         Ok((level, content)) => {
                             println!();
                             println!("{}", content);
@@ -119,14 +138,19 @@ pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
                         }
                         Err(e) => output::print_error(&format!("Hint error: {}", e)),
                     }
+                    let _ = terminal::enable_raw_mode();
                 }
                 KeyCode::Char('l') => {
-                    show_current_exercise(state, &exercises_root);
+                    let _ = terminal::disable_raw_mode();
+                    show_current_exercise(state, exercises_root);
+                    let _ = terminal::enable_raw_mode();
                 }
                 KeyCode::Char('n') => {
+                    let _ = terminal::disable_raw_mode();
                     output::print_info("Skipping to next exercise...");
                     state.done_current_exercise()?;
-                    show_current_exercise(state, &exercises_root);
+                    show_current_exercise(state, exercises_root);
+                    let _ = terminal::enable_raw_mode();
                 }
                 _ => {}
             },

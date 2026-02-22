@@ -93,9 +93,11 @@ impl Exercise {
     pub fn has_done_marker(source_path: &Path) -> Result<bool> {
         let content = std::fs::read_to_string(source_path)
             .with_context(|| format!("Failed to read {}", source_path.display()))?;
-        Ok(content.contains(DONE_MARKER)
-            || content.contains(DONE_MARKER_PY)
-            || content.contains(DONE_MARKER_XML))
+        // Match only standalone marker lines (trimmed), not substrings in instruction text.
+        Ok(content.lines().any(|line| {
+            let trimmed = line.trim();
+            trimmed == DONE_MARKER || trimmed == DONE_MARKER_PY || trimmed == DONE_MARKER_XML
+        }))
     }
 
     /// Checks ALL candidate source files for a done marker.
@@ -190,6 +192,28 @@ mod tests {
         let file = tmp.path().join("test.cpp");
         fs::write(&file, "int main() { return 0; }").unwrap();
         assert!(!Exercise::has_done_marker(&file).unwrap());
+    }
+
+    #[test]
+    fn test_marker_in_instruction_text_not_false_positive() {
+        let tmp = TempDir::new().unwrap();
+        // Simulates a file where the top marker was removed but instruction text
+        // still mentions the marker in quotes — must NOT be detected.
+        let file = tmp.path().join("hello.cpp");
+        fs::write(
+            &file,
+            "// steps:\n//   4. 删除顶部的 \"// I AM NOT DONE\"\nint main() {}",
+        )
+        .unwrap();
+        assert!(!Exercise::has_done_marker(&file).unwrap());
+
+        let py_file = tmp.path().join("hello.py");
+        fs::write(
+            &py_file,
+            "# steps:\n#   4. 删除顶部的 \"# I AM NOT DONE\"\nimport rclpy",
+        )
+        .unwrap();
+        assert!(!Exercise::has_done_marker(&py_file).unwrap());
     }
 
     #[test]
