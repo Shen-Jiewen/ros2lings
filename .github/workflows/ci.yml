@@ -64,6 +64,10 @@ jobs:
             ros-humble-launch-testing \
             ros-humble-launch-testing-ament-cmake \
             ros-humble-rcl-interfaces \
+            ros-humble-tf2 \
+            ros-humble-tf2-ros \
+            ros-humble-tf2-geometry-msgs \
+            ros-humble-geometry-msgs \
             python3-pytest
 
       - name: Overlay solutions onto exercises
@@ -110,7 +114,7 @@ jobs:
           source /opt/ros/humble/setup.bash
           source /tmp/ros2lings_install/setup.bash
           colcon build \
-            --paths exercises/01_nodes/* exercises/02_services/* exercises/03_launch/* \
+            --paths exercises/01_nodes/* exercises/02_services/* exercises/03_launch/* exercises/04_tf2/* \
             --build-base /tmp/ros2lings_build \
             --install-base /tmp/ros2lings_install
 

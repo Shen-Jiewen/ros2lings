@@ -17,6 +17,7 @@ final_message = """
 - 服务、Action 客户端/服务器
 - 自定义消息、QoS、组件化节点
 - Launch 文件、参数系统、YAML 配置
+- TF2 坐标变换、帧链、多机器人 TF
 
 继续探索 ROS2 的更深层次吧！
 """
@@ -499,3 +500,133 @@ hint_count = 3
 depends_on = ["29_multi_node_launch"]
 test = true
 hint = "OnProcessExit 在进程退出后触发，RegisterEventHandler 注册事件处理器。"
+
+# ── Module 04: TF2 Transforms (10 exercises) ──
+
+[[exercises]]
+name = "38_static_broadcaster"
+dir = "04_tf2/01_static_broadcaster"
+module = "TF2 Transforms"
+mode = "fix"
+language = "cpp"
+difficulty = 1
+estimated_minutes = 10
+hint_count = 3
+test = true
+hint = "StaticTransformBroadcaster 需要正确的头文件。frame_id 是父帧，child_frame_id 是子帧。"
+
+[[exercises]]
+name = "39_dynamic_broadcaster"
+dir = "04_tf2/02_dynamic_broadcaster"
+module = "TF2 Transforms"
+mode = "fix"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["38_static_broadcaster"]
+test = true
+hint = "动态变换用 TransformBroadcaster（非 Static），时间戳必须用 this->now() 更新。"
+
+[[exercises]]
+name = "40_tf_listener"
+dir = "04_tf2/03_tf_listener"
+module = "TF2 Transforms"
+mode = "fix"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["39_dynamic_broadcaster"]
+test = true
+hint = "Buffer 需要时钟参数。lookupTransform(target, source, time) 注意参数顺序。"
+
+[[exercises]]
+name = "41_frame_chain"
+dir = "04_tf2/04_frame_chain"
+module = "TF2 Transforms"
+mode = "implement"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 20
+hint_count = 3
+depends_on = ["38_static_broadcaster"]
+test = true
+hint = "发布多个静态变换构建帧链：map → odom → base_link → sensor_link。"
+
+[[exercises]]
+name = "42_tf_time_travel"
+dir = "04_tf2/05_tf_time_travel"
+module = "TF2 Transforms"
+mode = "debug"
+language = "cpp"
+difficulty = 3
+estimated_minutes = 20
+hint_count = 3
+depends_on = ["40_tf_listener"]
+test = true
+hint = "用 tf2::TimePointZero 获取最新变换，timeout 不能为 0，捕获 tf2::TransformException。"
+
+[[exercises]]
+name = "43_tf_broadcaster_py"
+dir = "04_tf2/06_tf_broadcaster_py"
+module = "TF2 Transforms"
+mode = "fix"
+language = "python"
+difficulty = 1
+estimated_minutes = 10
+hint_count = 3
+test = true
+hint = "Python 中用 TransformBroadcaster（非 Static），时间戳用 self.get_clock().now().to_msg()。"
+
+[[exercises]]
+name = "44_tf_listener_py"
+dir = "04_tf2/07_tf_listener_py"
+module = "TF2 Transforms"
+mode = "fix"
+language = "python"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["43_tf_broadcaster_py"]
+test = true
+hint = "TransformListener 需要 buffer 和 node 参数。lookup_transform 注意帧参数顺序。"
+
+[[exercises]]
+name = "45_coordinate_transform"
+dir = "04_tf2/08_coordinate_transform"
+module = "TF2 Transforms"
+mode = "implement"
+language = "cpp"
+difficulty = 3
+estimated_minutes = 25
+hint_count = 3
+depends_on = ["40_tf_listener"]
+test = true
+hint = "tf2::doTransform 将点从一个帧变换到另一个帧，需要先 lookupTransform 获取变换。"
+
+[[exercises]]
+name = "46_tf_debug"
+dir = "04_tf2/09_tf_debug"
+module = "TF2 Transforms"
+mode = "explore"
+language = "python"
+difficulty = 2
+estimated_minutes = 10
+hint_count = 3
+depends_on = ["40_tf_listener"]
+test = true
+hint = "view_frames 生成 TF 树图，静态变换在 /tf_static，动态变换在 /tf。"
+
+[[exercises]]
+name = "47_multi_robot_tf"
+dir = "04_tf2/10_multi_robot_tf"
+module = "TF2 Transforms"
+mode = "implement"
+language = "cpp"
+difficulty = 3
+estimated_minutes = 25
+hint_count = 3
+depends_on = ["41_frame_chain"]
+test = true
+hint = "用 robot1/、robot2/ 前缀隔离不同机器人的 TF 帧，共享 world 根帧。"

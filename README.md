@@ -4,7 +4,7 @@
 
 **Learn ROS2 by fixing broken code** — like [rustlings](https://github.com/rust-lang/rustlings), but for ROS2.
 
-ROS2lings guides you through 37 exercises that teach ROS2 core concepts. Each exercise is a broken ROS2 package with `TODO` markers showing you what to fix. A CLI tool watches your edits, rebuilds, tests, and advances you automatically.
+ROS2lings guides you through 47 exercises that teach ROS2 core concepts. Each exercise is a broken ROS2 package with `TODO` markers showing you what to fix. A CLI tool watches your edits, rebuilds, tests, and advances you automatically.
 
 ## Prerequisites
 
@@ -90,6 +90,21 @@ ros2lings reset <name>  # Reset an exercise to its original state
 | 8 | `08_parameter_py` | Python | Python parameters |
 | 9 | `09_launch_composition` | Python | Component composition via launch |
 | 10 | `10_launch_events` | Python | Event-driven launch |
+
+### Module 04: TF2 Transforms (10 exercises)
+
+| # | Exercise | Language | Concepts |
+|---|----------|----------|----------|
+| 1 | `01_static_broadcaster` | C++ | StaticTransformBroadcaster, static transform |
+| 2 | `02_dynamic_broadcaster` | C++ | TransformBroadcaster, timer-based transform |
+| 3 | `03_tf_listener` | C++ | TransformListener, Buffer, lookupTransform |
+| 4 | `04_frame_chain` | C++ | Multi-frame chain (map→odom→base→sensor) |
+| 5 | `05_tf_time_travel` | C++ | Timestamp queries, tf2::TimePointZero |
+| 6 | `06_tf_broadcaster_py` | Python | Python TransformBroadcaster |
+| 7 | `07_tf_listener_py` | Python | Python lookupTransform |
+| 8 | `08_coordinate_transform` | C++ | tf2::doTransform, cross-frame point transform |
+| 9 | `09_tf_debug` | Python | TF tree analysis, view_frames |
+| 10 | `10_multi_robot_tf` | C++ | Multi-robot TF trees, namespace isolation |
 
 ## How It Works
 
