@@ -77,8 +77,12 @@ int main(int argc, char * argv[])
   // TODO: 发送异步请求
   // auto future = client->async_send_request(request);
 
-  // TODO: 等待结果（提示：spin server_node 来处理服务回调）
-  // rclcpp::spin_until_future_complete(server_node, future);
+  // TODO: 使用 executor 同时 spin 两个节点，等待结果
+  // 提示: SingleThreadedExecutor, add_node, spin_until_future_complete
+  // rclcpp::executors::SingleThreadedExecutor executor;
+  // executor.add_node(server_node);
+  // executor.add_node(client_node);
+  // executor.spin_until_future_complete(future);
 
   // TODO: 获取并打印结果
   // auto response = future.get();

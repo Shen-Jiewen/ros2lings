@@ -76,9 +76,13 @@ int main(int argc, char * argv[])
   // request->width = 3.5;
   // request->height = 4.2;
 
-  // TODO: 发送请求并等待结果
+  // TODO: 发送请求并使用 executor 等待结果
+  // 提示: SingleThreadedExecutor, add_node(server_node), add_node(client_node)
   // auto future = client->async_send_request(request);
-  // rclcpp::spin_until_future_complete(server_node, future);
+  // rclcpp::executors::SingleThreadedExecutor executor;
+  // executor.add_node(server_node);
+  // executor.add_node(client_node);
+  // executor.spin_until_future_complete(future);
   // auto response = future.get();
   // RCLCPP_INFO(client_node->get_logger(), "Area: %.2f", response->area);
 

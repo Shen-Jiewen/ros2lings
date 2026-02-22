@@ -55,7 +55,8 @@ def main():
 
     future = client.call_async(request)
 
-    # spin 服务器节点直到收到结果
+    # TODO: 使用 executor 同时 spin 两个节点
+    # 提示: SingleThreadedExecutor, add_node, spin_until_future_complete
     rclpy.spin_until_future_complete(server, future)
 
     result = future.result()

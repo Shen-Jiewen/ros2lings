@@ -32,7 +32,7 @@ def main():
     node.get_logger().info('Hello from Python ROS2 node!')
 
     # TODO: 让节点至少 spin 一次
-    # 提示: 使用 rclpy.spin_once(node)
+    # 提示: 使用 rclpy.spin_once(node, timeout_sec=1.0)
     rclpy.shutdown()
 
 

@@ -4,6 +4,7 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import SingleThreadedExecutor
 from ros2lings_interfaces.srv import AddTwoInts
 
 
@@ -29,7 +30,12 @@ def main():
     client = client_node.create_client(AddTwoInts, 'add_two_ints')
 
     # 等待服务可用
-    client.wait_for_service(timeout_sec=5.0)
+    if not client.wait_for_service(timeout_sec=5.0):
+        client_node.get_logger().error('Service not available')
+        server.destroy_node()
+        client_node.destroy_node()
+        rclpy.shutdown()
+        return
 
     # 发送请求
     request = AddTwoInts.Request()
@@ -38,8 +44,11 @@ def main():
 
     future = client.call_async(request)
 
-    # spin 服务器节点直到收到结果
-    rclpy.spin_until_future_complete(server, future)
+    # 使用 executor 同时 spin 两个节点
+    executor = SingleThreadedExecutor()
+    executor.add_node(server)
+    executor.add_node(client_node)
+    executor.spin_until_future_complete(future)
 
     result = future.result()
     client_node.get_logger().info(f'Result: {result.sum}')

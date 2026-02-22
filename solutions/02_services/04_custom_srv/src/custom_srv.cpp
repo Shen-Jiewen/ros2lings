@@ -58,7 +58,12 @@ int main(int argc, char * argv[])
 
   auto future = client->async_send_request(request);
 
-  if (rclcpp::spin_until_future_complete(server_node, future) ==
+  // 使用 executor 同时 spin 两个节点来等待结果
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(server_node);
+  executor.add_node(client_node);
+
+  if (executor.spin_until_future_complete(future) ==
     rclcpp::FutureReturnCode::SUCCESS)
   {
     auto response = future.get();

@@ -19,11 +19,11 @@ public:
     RCLCPP_INFO(get_logger(), "Fibonacci Action Client created");
   }
 
-  void send_goal(int order)
+  bool send_goal(int order)
   {
     if (!client_->wait_for_action_server(std::chrono::seconds(5))) {
       RCLCPP_ERROR(get_logger(), "Action server not available");
-      return;
+      return false;
     }
 
     auto goal_msg = Fibonacci::Goal();
@@ -44,6 +44,7 @@ public:
     client_->async_send_goal(goal_msg, send_goal_options);
 
     RCLCPP_INFO(get_logger(), "Goal sent");
+    return true;
   }
 
 private:
@@ -98,8 +99,9 @@ int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
   auto client = std::make_shared<FibonacciActionClient>();
-  client->send_goal(10);
-  rclcpp::spin(client);
+  if (client->send_goal(10)) {
+    rclcpp::spin(client);
+  }
   rclcpp::shutdown();
   return 0;
 }

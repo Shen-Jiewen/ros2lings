@@ -27,11 +27,15 @@ class ParamDemoNode(Node):
 
         self.count_ = 0
         self.publisher_ = self.create_publisher(String, 'param_topic', 10)
-        self.timer_ = self.create_timer(self.timer_period_, self.timer_callback)
+        self.timer_ = None
 
         self.get_logger().info(f'robot_name: {self.robot_name_}')
         self.get_logger().info(f'max_count: {self.max_count_}')
         self.get_logger().info(f'timer_period: {self.timer_period_}')
+
+    def start(self):
+        """启动定时器，开始发布消息"""
+        self.timer_ = self.create_timer(self.timer_period_, self.timer_callback)
 
     def timer_callback(self):
         if self.count_ < self.max_count_:
@@ -51,6 +55,7 @@ class ParamDemoNode(Node):
 def main():
     rclpy.init()
     node = ParamDemoNode()
+    node.start()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
