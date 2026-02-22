@@ -143,9 +143,8 @@ TEST_F(FrameChainTest, BaseLinkToSensorLinkTranslationCorrect) {
 TEST_F(FrameChainTest, CanLookupChainedTransform) {
   auto node = std::make_shared<FrameChainNode>();
 
-  // 创建 Buffer + Listener 来验证帧链是否可查
+  // 创建 Buffer（不含 TransformListener 以避免线程问题）
   auto buffer = std::make_shared<tf2_ros::Buffer>(node->get_clock());
-  auto listener = std::make_shared<tf2_ros::TransformListener>(*buffer);
 
   // 手动将变换设置到 buffer 中验证帧链
   auto transforms = node->get_transforms();

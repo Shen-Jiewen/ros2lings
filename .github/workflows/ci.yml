@@ -114,7 +114,7 @@ jobs:
           source /opt/ros/humble/setup.bash
           source /tmp/ros2lings_install/setup.bash
           colcon build \
-            --paths exercises/01_nodes/* exercises/02_services/* exercises/03_launch/* exercises/04_tf2/* \
+            --paths exercises/01_nodes/* exercises/02_services/* exercises/03_launch/* exercises/04_tf2/* exercises/05_urdf/* \
             --build-base /tmp/ros2lings_build \
             --install-base /tmp/ros2lings_install
 
