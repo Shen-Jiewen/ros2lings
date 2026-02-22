@@ -24,7 +24,10 @@ pub fn show_hint(
     } else if level <= exercise.hint_count {
         anyhow::bail!("Hint file not found: {}", hint_file.display());
     } else {
-        Ok((level, "No more hints available. You've seen all hints for this exercise!".to_string()))
+        Ok((
+            level,
+            "No more hints available. You've seen all hints for this exercise!".to_string(),
+        ))
     }
 }
 
@@ -38,10 +41,16 @@ mod tests {
     #[test]
     fn test_show_quick_hint() {
         let info = ExerciseInfo {
-            name: "test".to_string(), dir: "m/test".to_string(),
-            module: "M".to_string(), mode: ExerciseMode::Fix,
-            language: Language::Cpp, difficulty: 1, estimated_minutes: 5,
-            hint_count: 1, depends_on: vec![], test: true,
+            name: "test".to_string(),
+            dir: "m/test".to_string(),
+            module: "M".to_string(),
+            mode: ExerciseMode::Fix,
+            language: Language::Cpp,
+            difficulty: 1,
+            estimated_minutes: 5,
+            hint_count: 1,
+            depends_on: vec![],
+            test: true,
             hint: "Quick hint here".to_string(),
         };
         let tmp = TempDir::new().unwrap();
@@ -58,10 +67,16 @@ mod tests {
         fs::write(hints_dir.join("hint1.md"), "# Hint 1\nDetailed hint.").unwrap();
 
         let info = ExerciseInfo {
-            name: "test".to_string(), dir: "m/test".to_string(),
-            module: "M".to_string(), mode: ExerciseMode::Fix,
-            language: Language::Cpp, difficulty: 1, estimated_minutes: 5,
-            hint_count: 2, depends_on: vec![], test: true,
+            name: "test".to_string(),
+            dir: "m/test".to_string(),
+            module: "M".to_string(),
+            mode: ExerciseMode::Fix,
+            language: Language::Cpp,
+            difficulty: 1,
+            estimated_minutes: 5,
+            hint_count: 2,
+            depends_on: vec![],
+            test: true,
             hint: "quick".to_string(),
         };
         let (level, content) = show_hint(&info, tmp.path(), 1).unwrap();

@@ -2,13 +2,8 @@ use crate::info_file::ExerciseInfo;
 use anyhow::{Context, Result};
 use std::path::Path;
 
-pub fn get_explanation(
-    exercise: &ExerciseInfo,
-    exercises_root: &Path,
-) -> Result<String> {
-    let explain_file = exercises_root
-        .join(&exercise.dir)
-        .join("explain.md");
+pub fn get_explanation(exercise: &ExerciseInfo, exercises_root: &Path) -> Result<String> {
+    let explain_file = exercises_root.join(&exercise.dir).join("explain.md");
 
     if !explain_file.exists() {
         anyhow::bail!(
@@ -37,10 +32,17 @@ mod tests {
         fs::write(ex_dir.join("explain.md"), "# Node\nExplanation here.").unwrap();
 
         let info = ExerciseInfo {
-            name: "test".to_string(), dir: "m/test".to_string(),
-            module: "M".to_string(), mode: ExerciseMode::Fix,
-            language: Language::Cpp, difficulty: 1, estimated_minutes: 5,
-            hint_count: 1, depends_on: vec![], test: true, hint: String::new(),
+            name: "test".to_string(),
+            dir: "m/test".to_string(),
+            module: "M".to_string(),
+            mode: ExerciseMode::Fix,
+            language: Language::Cpp,
+            difficulty: 1,
+            estimated_minutes: 5,
+            hint_count: 1,
+            depends_on: vec![],
+            test: true,
+            hint: String::new(),
         };
         let content = get_explanation(&info, tmp.path()).unwrap();
         assert!(content.contains("Explanation here"));
@@ -50,10 +52,17 @@ mod tests {
     fn test_missing_explanation() {
         let tmp = TempDir::new().unwrap();
         let info = ExerciseInfo {
-            name: "test".to_string(), dir: "m/test".to_string(),
-            module: "M".to_string(), mode: ExerciseMode::Fix,
-            language: Language::Cpp, difficulty: 1, estimated_minutes: 5,
-            hint_count: 1, depends_on: vec![], test: true, hint: String::new(),
+            name: "test".to_string(),
+            dir: "m/test".to_string(),
+            module: "M".to_string(),
+            mode: ExerciseMode::Fix,
+            language: Language::Cpp,
+            difficulty: 1,
+            estimated_minutes: 5,
+            hint_count: 1,
+            depends_on: vec![],
+            test: true,
+            hint: String::new(),
         };
         assert!(get_explanation(&info, tmp.path()).is_err());
     }
