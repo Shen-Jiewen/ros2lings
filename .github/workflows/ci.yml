@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cargo-tests:
+    name: Cargo Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Format check
+        run: cargo fmt -- --check
+
+  ros2-tests:
+    name: ROS2 Tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: humble
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ros-humble-ament-cmake-gtest \
+            ros-humble-ament-cmake-pytest \
+            ros-humble-rosidl-default-generators \
+            ros-humble-rosidl-default-runtime \
+            ros-humble-action-msgs \
+            ros-humble-rclcpp \
+            ros-humble-rclpy \
+            ros-humble-rclcpp-action \
+            ros-humble-rclcpp-lifecycle \
+            ros-humble-rclcpp-components \
+            ros-humble-std-msgs \
+            python3-pytest
+
+      - name: Overlay solutions onto exercises
+        run: |
+          for module in solutions/*/; do
+            module_name=$(basename "$module")
+            for exercise in "$module"/*/; do
+              exercise_name=$(basename "$exercise")
+              target="exercises/$module_name/$exercise_name"
+              # Copy src/ directory
+              if [ -d "$exercise/src" ]; then
+                cp -r "$exercise/src/"* "$target/src/"
+              fi
+              # Copy srv/ directory if present
+              if [ -d "$exercise/srv" ]; then
+                cp -r "$exercise/srv/"* "$target/srv/"
+              fi
+              # Copy action/ directory if present
+              if [ -d "$exercise/action" ]; then
+                cp -r "$exercise/action/"* "$target/action/"
+              fi
+              # Copy msg/ directory if present
+              if [ -d "$exercise/msg" ]; then
+                cp -r "$exercise/msg/"* "$target/msg/"
+              fi
+            done
+          done
+
+      - name: Build ros2lings_interfaces
+        run: |
+          source /opt/ros/humble/setup.bash
+          colcon build \
+            --paths exercises/ros2lings_interfaces \
+            --packages-select ros2lings_interfaces \
+            --build-base /tmp/ros2lings_build \
+            --install-base /tmp/ros2lings_install
+
+      - name: Build all exercise packages
+        run: |
+          source /opt/ros/humble/setup.bash
+          source /tmp/ros2lings_install/setup.bash
+          colcon build \
+            --paths exercises/01_nodes/* exercises/02_services/* \
+            --build-base /tmp/ros2lings_build \
+            --install-base /tmp/ros2lings_install
+
+      - name: Run tests
+        run: |
+          source /opt/ros/humble/setup.bash
+          source /tmp/ros2lings_install/setup.bash
+          colcon test \
+            --build-base /tmp/ros2lings_build \
+            --install-base /tmp/ros2lings_install \
+            --test-result-base /tmp/ros2lings_test_results \
+            --return-code-on-test-failure
+
+      - name: Show test results
+        if: always()
+        run: |
+          source /opt/ros/humble/setup.bash
+          colcon test-result \
+            --test-result-base /tmp/ros2lings_test_results \
+            --verbose
