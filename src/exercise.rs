@@ -12,7 +12,10 @@ pub struct Exercise {
 
 impl Exercise {
     pub fn new(info: ExerciseInfo, exercises_root: PathBuf) -> Self {
-        Self { info, exercises_root }
+        Self {
+            info,
+            exercises_root,
+        }
     }
 
     pub fn dir_path(&self) -> PathBuf {
@@ -30,16 +33,15 @@ impl Exercise {
                 let entry = entry?;
                 let path = entry.path();
                 if let Some(ext) = path.extension() {
-                    match ext.to_str() {
-                        Some("cpp" | "py" | "c") => return Ok(path),
-                        _ => {}
+                    if let Some("cpp" | "py" | "c") = ext.to_str() {
+                        return Ok(path);
                     }
                 }
             }
         }
 
-        for entry in std::fs::read_dir(&dir)
-            .with_context(|| format!("Failed to read {}", dir.display()))?
+        for entry in
+            std::fs::read_dir(&dir).with_context(|| format!("Failed to read {}", dir.display()))?
         {
             let entry = entry?;
             let path = entry.path();
@@ -87,7 +89,10 @@ mod tests {
     fn test_dir_path() {
         let info = make_test_info("hello_node");
         let ex = Exercise::new(info, PathBuf::from("/tmp/exercises"));
-        assert_eq!(ex.dir_path(), PathBuf::from("/tmp/exercises/01_nodes/hello_node"));
+        assert_eq!(
+            ex.dir_path(),
+            PathBuf::from("/tmp/exercises/01_nodes/hello_node")
+        );
     }
 
     #[test]
@@ -103,8 +108,12 @@ mod tests {
             module: "test".to_string(),
             mode: ExerciseMode::Fix,
             language: Language::Cpp,
-            difficulty: 1, estimated_minutes: 5, hint_count: 1,
-            depends_on: vec![], test: true, hint: String::new(),
+            difficulty: 1,
+            estimated_minutes: 5,
+            hint_count: 1,
+            depends_on: vec![],
+            test: true,
+            hint: String::new(),
         };
         let ex = Exercise::new(info, tmp.path().to_path_buf());
         let source = ex.source_file().unwrap();

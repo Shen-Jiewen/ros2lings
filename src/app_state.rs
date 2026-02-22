@@ -64,8 +64,7 @@ impl AppState {
             current_name,
             done_list.join(",")
         );
-        std::fs::write(&self.state_file, content)
-            .with_context(|| "Failed to write state file")?;
+        std::fs::write(&self.state_file, content).with_context(|| "Failed to write state file")?;
         Ok(())
     }
 
@@ -116,22 +115,43 @@ mod tests {
     fn make_exercises() -> Vec<ExerciseInfo> {
         vec![
             ExerciseInfo {
-                name: "ex1".to_string(), dir: "m01/ex1".to_string(),
-                module: "M1".to_string(), mode: ExerciseMode::Fix,
-                language: Language::Cpp, difficulty: 1, estimated_minutes: 5,
-                hint_count: 1, depends_on: vec![], test: true, hint: "h".to_string(),
+                name: "ex1".to_string(),
+                dir: "m01/ex1".to_string(),
+                module: "M1".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec![],
+                test: true,
+                hint: "h".to_string(),
             },
             ExerciseInfo {
-                name: "ex2".to_string(), dir: "m01/ex2".to_string(),
-                module: "M1".to_string(), mode: ExerciseMode::Fix,
-                language: Language::Cpp, difficulty: 1, estimated_minutes: 5,
-                hint_count: 1, depends_on: vec![], test: true, hint: "h".to_string(),
+                name: "ex2".to_string(),
+                dir: "m01/ex2".to_string(),
+                module: "M1".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec![],
+                test: true,
+                hint: "h".to_string(),
             },
             ExerciseInfo {
-                name: "ex3".to_string(), dir: "m01/ex3".to_string(),
-                module: "M1".to_string(), mode: ExerciseMode::Fix,
-                language: Language::Cpp, difficulty: 1, estimated_minutes: 5,
-                hint_count: 1, depends_on: vec![], test: true, hint: "h".to_string(),
+                name: "ex3".to_string(),
+                dir: "m01/ex3".to_string(),
+                module: "M1".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec![],
+                test: true,
+                hint: "h".to_string(),
             },
         ]
     }

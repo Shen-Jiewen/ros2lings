@@ -6,11 +6,10 @@ use crate::ros2_env::Ros2Env;
 use crate::verify::{self, VerifyPipeline, VerifyResult};
 use crate::{Cli, Commands};
 use anyhow::{Context, Result};
-use std::path::PathBuf;
+use std::path::Path;
 
 pub fn run(cli: Cli) -> Result<()> {
-    let project_root = std::env::current_dir()
-        .context("Failed to get current directory")?;
+    let project_root = std::env::current_dir().context("Failed to get current directory")?;
 
     let info_path = project_root.join("info.toml");
     let info = InfoFile::parse(&info_path)?;
@@ -21,18 +20,14 @@ pub fn run(cli: Cli) -> Result<()> {
         None => cmd_watch(&project_root, &mut state),
         Some(Commands::List) => cmd_list(&state),
         Some(Commands::Hint) => cmd_hint(&project_root, &state),
-        Some(Commands::Verify { name }) => {
-            cmd_verify(&project_root, &mut state, name.as_deref())
-        }
+        Some(Commands::Verify { name }) => cmd_verify(&project_root, &mut state, name.as_deref()),
         Some(Commands::Reset { name }) => cmd_reset(&project_root, &state, &name),
-        Some(Commands::Explain { name }) => {
-            cmd_explain(&project_root, &state, name.as_deref())
-        }
+        Some(Commands::Explain { name }) => cmd_explain(&project_root, &state, name.as_deref()),
         Some(Commands::Graph) => cmd_graph(&state),
     }
 }
 
-fn cmd_watch(project_root: &PathBuf, state: &mut AppState) -> Result<()> {
+fn cmd_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
     crate::watch::run_watch(project_root, state)
 }
 
@@ -77,7 +72,7 @@ fn cmd_list(state: &AppState) -> Result<()> {
     Ok(())
 }
 
-fn cmd_hint(project_root: &PathBuf, state: &AppState) -> Result<()> {
+fn cmd_hint(project_root: &Path, state: &AppState) -> Result<()> {
     let exercise = state.current_exercise();
     let exercises_root = project_root.join("exercises");
 
@@ -101,11 +96,7 @@ fn cmd_hint(project_root: &PathBuf, state: &AppState) -> Result<()> {
     Ok(())
 }
 
-fn cmd_verify(
-    project_root: &PathBuf,
-    state: &mut AppState,
-    name: Option<&str>,
-) -> Result<()> {
+fn cmd_verify(project_root: &Path, state: &mut AppState, name: Option<&str>) -> Result<()> {
     let ros2_env = Ros2Env::detect()?;
 
     let exercise_index = match name {
@@ -126,7 +117,7 @@ fn cmd_verify(
         info.difficulty,
     );
 
-    let pipeline = VerifyPipeline::new(ros2_env, project_root.clone());
+    let pipeline = VerifyPipeline::new(ros2_env, project_root.to_path_buf());
     let result = pipeline.verify(&exercise)?;
 
     match result {
@@ -168,7 +159,7 @@ fn cmd_verify(
     Ok(())
 }
 
-fn cmd_reset(project_root: &PathBuf, state: &AppState, name: &str) -> Result<()> {
+fn cmd_reset(project_root: &Path, state: &AppState, name: &str) -> Result<()> {
     let idx = state
         .find_exercise(name)
         .with_context(|| format!("Exercise '{}' not found", name))?;
@@ -178,7 +169,11 @@ fn cmd_reset(project_root: &PathBuf, state: &AppState, name: &str) -> Result<()>
     let solutions_dir = project_root.join("solutions").join(&info.dir);
 
     if !solutions_dir.exists() {
-        anyhow::bail!("Solution not found for '{}' at {}", name, solutions_dir.display());
+        anyhow::bail!(
+            "Solution not found for '{}' at {}",
+            name,
+            solutions_dir.display()
+        );
     }
 
     let sol_src = solutions_dir.join("src");
@@ -197,11 +192,7 @@ fn cmd_reset(project_root: &PathBuf, state: &AppState, name: &str) -> Result<()>
     Ok(())
 }
 
-fn cmd_explain(
-    project_root: &PathBuf,
-    state: &AppState,
-    name: Option<&str>,
-) -> Result<()> {
+fn cmd_explain(project_root: &Path, state: &AppState, name: Option<&str>) -> Result<()> {
     let exercise = match name {
         Some(n) => {
             let idx = state

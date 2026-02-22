@@ -55,8 +55,8 @@ impl InfoFile {
     pub fn parse(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read info.toml at {}", path.display()))?;
-        let info: InfoFile = toml::from_str(&content)
-            .with_context(|| "Failed to parse info.toml")?;
+        let info: InfoFile =
+            toml::from_str(&content).with_context(|| "Failed to parse info.toml")?;
 
         if info.format_version != 1 {
             anyhow::bail!(
@@ -155,7 +155,10 @@ hint = "hint"
         let f = write_temp_toml(toml_str);
         let info = InfoFile::parse(f.path()).unwrap();
         assert_eq!(info.exercises.len(), 2);
-        assert_eq!(info.exercises[1].depends_on, vec!["01_hello_node".to_string()]);
+        assert_eq!(
+            info.exercises[1].depends_on,
+            vec!["01_hello_node".to_string()]
+        );
     }
 
     #[test]
@@ -176,7 +179,10 @@ hint = "hint"
         let f = write_temp_toml(toml_str);
         let result = InfoFile::parse(f.path());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Unsupported info.toml format_version"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Unsupported info.toml format_version"));
     }
 
     #[test]
@@ -267,7 +273,10 @@ hint = "h"
 "#
             );
             let f = write_temp_toml(&toml_str);
-            assert!(InfoFile::parse(f.path()).is_ok(), "Failed for language: {lang}");
+            assert!(
+                InfoFile::parse(f.path()).is_ok(),
+                "Failed for language: {lang}"
+            );
         }
     }
 }

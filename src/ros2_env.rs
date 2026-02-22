@@ -13,14 +13,20 @@ impl Ros2Env {
         if let Ok(distro) = std::env::var("ROS_DISTRO") {
             let setup = PathBuf::from(format!("/opt/ros/{distro}/setup.bash"));
             if setup.exists() {
-                return Ok(Self { distro, setup_bash: setup });
+                return Ok(Self {
+                    distro,
+                    setup_bash: setup,
+                });
             }
         }
 
         for distro in &["humble", "jazzy", "iron"] {
             let setup = PathBuf::from(format!("/opt/ros/{distro}/setup.bash"));
             if setup.exists() {
-                return Ok(Self { distro: distro.to_string(), setup_bash: setup });
+                return Ok(Self {
+                    distro: distro.to_string(),
+                    setup_bash: setup,
+                });
             }
         }
 

@@ -6,7 +6,7 @@ use crate::verify::{VerifyPipeline, VerifyResult};
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
 
@@ -15,14 +15,16 @@ enum WatchEvent {
     Key(KeyEvent),
 }
 
-pub fn run_watch(project_root: &PathBuf, state: &mut AppState) -> Result<()> {
+pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
     let ros2_env = Ros2Env::detect()?;
-    let pipeline = VerifyPipeline::new(ros2_env, project_root.clone());
+    let pipeline = VerifyPipeline::new(ros2_env, project_root.to_path_buf());
     let exercises_root = project_root.join("exercises");
 
     println!();
     output::print_info("ROS2lings — Watch Mode");
-    output::print_info("Watching for file changes... (press 'q' to quit, 'h' for hint, 'l' to list, 'n' to skip)");
+    output::print_info(
+        "Watching for file changes... (press 'q' to quit, 'h' for hint, 'l' to list, 'n' to skip)",
+    );
     println!();
 
     show_current_exercise(state, &exercises_root);
@@ -63,16 +65,13 @@ pub fn run_watch(project_root: &PathBuf, state: &mut AppState) -> Result<()> {
 
                 if path.starts_with(&current_dir) {
                     if let Some(ext) = path.extension() {
-                        match ext.to_str() {
-                            Some("cpp" | "py" | "c" | "h" | "hpp") => {
-                                println!();
-                                output::print_info(&format!(
-                                    "File changed: {}",
-                                    path.file_name().unwrap_or_default().to_string_lossy()
-                                ));
-                                run_verify(&pipeline, state, &exercises_root)?;
-                            }
-                            _ => {}
+                        if let Some("cpp" | "py" | "c" | "h" | "hpp") = ext.to_str() {
+                            println!();
+                            output::print_info(&format!(
+                                "File changed: {}",
+                                path.file_name().unwrap_or_default().to_string_lossy()
+                            ));
+                            run_verify(&pipeline, state, &exercises_root)?;
                         }
                     }
                 }
@@ -110,7 +109,7 @@ pub fn run_watch(project_root: &PathBuf, state: &mut AppState) -> Result<()> {
     Ok(())
 }
 
-fn show_current_exercise(state: &AppState, exercises_root: &PathBuf) {
+fn show_current_exercise(state: &AppState, exercises_root: &Path) {
     let ex = state.current_exercise();
     output::print_exercise_header(
         &ex.name,
@@ -129,10 +128,10 @@ fn show_current_exercise(state: &AppState, exercises_root: &PathBuf) {
 fn run_verify(
     pipeline: &VerifyPipeline,
     state: &mut AppState,
-    exercises_root: &PathBuf,
+    exercises_root: &Path,
 ) -> Result<()> {
     let info = state.current_exercise().clone();
-    let exercise = Exercise::new(info.clone(), exercises_root.clone());
+    let exercise = Exercise::new(info.clone(), exercises_root.to_path_buf());
 
     output::print_info("Compiling and testing...");
 

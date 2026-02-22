@@ -19,7 +19,10 @@ pub struct VerifyPipeline {
 
 impl VerifyPipeline {
     pub fn new(ros2_env: Ros2Env, project_root: PathBuf) -> Self {
-        Self { ros2_env, project_root }
+        Self {
+            ros2_env,
+            project_root,
+        }
     }
 
     pub fn verify(&self, exercise: &Exercise) -> Result<VerifyResult> {
@@ -112,9 +115,10 @@ pub fn format_build_error(raw_output: &str) -> String {
     let mut errors = Vec::new();
 
     for line in raw_output.lines() {
-        if line.contains(": error:") || line.contains(": fatal error:") {
-            errors.push(line.trim().to_string());
-        } else if line.starts_with("CMake Error") {
+        if line.contains(": error:")
+            || line.contains(": fatal error:")
+            || line.starts_with("CMake Error")
+        {
             errors.push(line.trim().to_string());
         }
     }
