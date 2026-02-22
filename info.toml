@@ -18,6 +18,7 @@ final_message = """
 - 自定义消息、QoS、组件化节点
 - Launch 文件、参数系统、YAML 配置
 - TF2 坐标变换、帧链、多机器人 TF
+- URDF 机器人建模、Xacro 参数化、TF 集成
 
 继续探索 ROS2 的更深层次吧！
 """
@@ -630,3 +631,108 @@ hint_count = 3
 depends_on = ["41_frame_chain"]
 test = true
 hint = "用 robot1/、robot2/ 前缀隔离不同机器人的 TF 帧，共享 world 根帧。"
+
+# ── Module 05: URDF & Robot Modeling (8 exercises) ──
+
+[[exercises]]
+name = "48_first_urdf"
+dir = "05_urdf/01_first_urdf"
+module = "URDF & Robot Modeling"
+mode = "fix"
+language = "cpp"
+difficulty = 1
+estimated_minutes = 10
+hint_count = 3
+test = true
+hint = "robot 标签需要 name 属性，link 需要正确的 name，box size 需要三个值。"
+
+[[exercises]]
+name = "49_links_and_joints"
+dir = "05_urdf/02_links_and_joints"
+module = "URDF & Robot Modeling"
+mode = "fix"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["48_first_urdf"]
+test = true
+hint = "joint type 拼写要正确，parent/child link 名称要匹配，revolute joint 需要 axis 和 limit。"
+
+[[exercises]]
+name = "50_visual_geometry"
+dir = "05_urdf/03_visual_geometry"
+module = "URDF & Robot Modeling"
+mode = "implement"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["49_links_and_joints"]
+test = true
+hint = "box、cylinder、sphere 是三种基本几何体，material 元素设置颜色。"
+
+[[exercises]]
+name = "51_collision_inertia"
+dir = "05_urdf/04_collision_inertia"
+module = "URDF & Robot Modeling"
+mode = "implement"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["50_visual_geometry"]
+test = true
+hint = "collision 几何体通常与 visual 相同，inertial 需要 mass、origin、inertia 矩阵。"
+
+[[exercises]]
+name = "52_xacro_basics"
+dir = "05_urdf/05_xacro_basics"
+module = "URDF & Robot Modeling"
+mode = "fix"
+language = "cpp"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["49_links_and_joints"]
+test = true
+hint = "Xacro 命名空间 URL 要完整，属性引用用 ${}，宏参数名要与定义一致。"
+
+[[exercises]]
+name = "53_xacro_params"
+dir = "05_urdf/06_xacro_params"
+module = "URDF & Robot Modeling"
+mode = "implement"
+language = "cpp"
+difficulty = 3
+estimated_minutes = 20
+hint_count = 3
+depends_on = ["52_xacro_basics"]
+test = true
+hint = "用 xacro:property 定义属性，xacro:macro 定义可复用的宏，然后调用宏构建机械臂。"
+
+[[exercises]]
+name = "54_robot_state_pub"
+dir = "05_urdf/07_robot_state_pub"
+module = "URDF & Robot Modeling"
+mode = "implement"
+language = "python"
+difficulty = 2
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["48_first_urdf"]
+test = true
+hint = "用 open() 读取 URDF 文件，通过 parameters=[{'robot_description': content}] 传给节点。"
+
+[[exercises]]
+name = "55_urdf_tf_integration"
+dir = "05_urdf/08_urdf_tf_integration"
+module = "URDF & Robot Modeling"
+mode = "explore"
+language = "python"
+difficulty = 3
+estimated_minutes = 15
+hint_count = 3
+depends_on = ["54_robot_state_pub"]
+test = true
+hint = "robot_state_publisher 读取 robot_description 参数，fixed joint 发布到 /tf_static。"

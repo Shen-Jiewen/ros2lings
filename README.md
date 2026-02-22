@@ -4,7 +4,7 @@
 
 **Learn ROS2 by fixing broken code** — like [rustlings](https://github.com/rust-lang/rustlings), but for ROS2.
 
-ROS2lings guides you through 47 exercises that teach ROS2 core concepts. Each exercise is a broken ROS2 package with `TODO` markers showing you what to fix. A CLI tool watches your edits, rebuilds, tests, and advances you automatically.
+ROS2lings guides you through 55 exercises that teach ROS2 core concepts. Each exercise is a broken ROS2 package with `TODO` markers showing you what to fix. A CLI tool watches your edits, rebuilds, tests, and advances you automatically.
 
 ## Prerequisites
 
@@ -105,6 +105,19 @@ ros2lings reset <name>  # Reset an exercise to its original state
 | 8 | `08_coordinate_transform` | C++ | tf2::doTransform, cross-frame point transform |
 | 9 | `09_tf_debug` | Python | TF tree analysis, view_frames |
 | 10 | `10_multi_robot_tf` | C++ | Multi-robot TF trees, namespace isolation |
+
+### Module 05: URDF & Robot Modeling (8 exercises)
+
+| # | Exercise | Language | Concepts |
+|---|----------|----------|----------|
+| 1 | `01_first_urdf` | URDF | Minimal URDF, single link, robot tag |
+| 2 | `02_links_and_joints` | URDF | Multi-link, joint types (revolute/fixed) |
+| 3 | `03_visual_geometry` | URDF | Box/cylinder/sphere geometry, materials |
+| 4 | `04_collision_inertia` | URDF | Collision geometry, inertial properties |
+| 5 | `05_xacro_basics` | Xacro | Xacro namespace, properties, macros |
+| 6 | `06_xacro_params` | Xacro | Parameterized modeling, reusable macros |
+| 7 | `07_robot_state_pub` | Python | Launch + robot_state_publisher |
+| 8 | `08_urdf_tf_integration` | Python | URDF-TF integration, joint_states |
 
 ## How It Works
 

@@ -97,6 +97,10 @@ jobs:
               if [ -d "$exercise/launch" ]; then
                 cp -r "$exercise/launch/"* "$target/launch/"
               fi
+              # Copy urdf/ directory if present
+              if [ -d "$exercise/urdf" ]; then
+                cp -r "$exercise/urdf/"* "$target/urdf/"
+              fi
             done
           done
 
