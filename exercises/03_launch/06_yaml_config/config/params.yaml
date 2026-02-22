@@ -1,0 +1,5 @@
+configurable_node:
+  ros__parameters:
+    robot_name: "ros2bot"
+    max_speed: 1.5
+    enable_logging: true
