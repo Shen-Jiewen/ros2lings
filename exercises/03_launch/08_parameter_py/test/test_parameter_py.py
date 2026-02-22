@@ -54,8 +54,8 @@ def test_max_count_is_integer():
     module = _create_param_node()
     node = module.ParamDemoNode()
     param = node.get_parameter('max_count')
-    from rcl_interfaces.msg import ParameterType
-    assert param.type_ == ParameterType.PARAMETER_INTEGER, \
+    from rclpy.parameter import Parameter
+    assert param.type_ == Parameter.Type.INTEGER, \
         f'max_count 应为整数类型，实际为 {param.type_}'
     node.destroy_node()
 
@@ -82,8 +82,8 @@ def test_timer_period_is_double():
     module = _create_param_node()
     node = module.ParamDemoNode()
     param = node.get_parameter('timer_period')
-    from rcl_interfaces.msg import ParameterType
-    assert param.type_ == ParameterType.PARAMETER_DOUBLE, \
+    from rclpy.parameter import Parameter
+    assert param.type_ == Parameter.Type.DOUBLE, \
         f'timer_period 应为浮点数类型，实际为 {param.type_}'
     node.destroy_node()
 
