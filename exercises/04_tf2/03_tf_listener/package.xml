@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ros2lings_40_tf_listener</name>
+  <version>0.1.0</version>
+  <description>ROS2lings 练习: tf_listener — 使用 TransformListener 和 Buffer 查询坐标变换</description>
+  <maintainer email="ros2lings@example.com">ros2lings</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2</depend>
+  <depend>geometry_msgs</depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
