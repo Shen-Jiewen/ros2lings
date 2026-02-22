@@ -1,0 +1,64 @@
+# 提示 3
+
+第三步是调用宏两次。
+
+宏调用语法为 `<xacro:宏名 参数1="值1" 参数2="值2" ... />`：
+
+```xml
+<!-- 第一段臂：连接到 base_link -->
+<xacro:arm_segment name="segment_1" parent="base_link"
+  length="${arm_length}" radius="${arm_radius}" />
+
+<!-- 第二段臂：连接到 segment_1 -->
+<xacro:arm_segment name="segment_2" parent="segment_1"
+  length="${arm_length}" radius="${arm_radius}" />
+```
+
+完整的文件应该如下：
+
+```xml
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="param_arm">
+
+  <xacro:property name="arm_length" value="0.5" />
+  <xacro:property name="arm_radius" value="0.05" />
+
+  <xacro:macro name="arm_segment" params="name parent length radius">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 ${length/2}" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="${radius}" length="${length}" />
+        </geometry>
+        <material name="arm_color">
+          <color rgba="0.8 0.6 0.2 1.0" />
+        </material>
+      </visual>
+    </link>
+    <joint name="${name}_joint" type="revolute">
+      <parent link="${parent}" />
+      <child link="${name}" />
+      <origin xyz="0 0 ${length}" rpy="0 0 0" />
+      <axis xyz="0 1 0" />
+      <limit lower="-1.57" upper="1.57" effort="100.0" velocity="1.0" />
+    </joint>
+  </xacro:macro>
+
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.3 0.3 0.1" />
+      </geometry>
+      <material name="grey">
+        <color rgba="0.5 0.5 0.5 1.0" />
+      </material>
+    </visual>
+  </link>
+
+  <xacro:arm_segment name="segment_1" parent="base_link"
+    length="${arm_length}" radius="${arm_radius}" />
+  <xacro:arm_segment name="segment_2" parent="segment_1"
+    length="${arm_length}" radius="${arm_radius}" />
+
+</robot>
+```

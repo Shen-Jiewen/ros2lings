@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<!-- I AM NOT DONE -->
+<!--
+  练习: xacro_basics
+  模块: 05 - URDF 与机器人建模
+  难度: ★★☆☆☆
+
+  学习目标:
+    掌握 Xacro 的基本语法 -- 属性（property）、宏（macro）、
+    命名空间声明，以及如何用 Xacro 生成 URDF。
+
+  说明:
+    下面的 Xacro 文件定义了一个简单的机器人，包含：
+      - 使用 xacro:property 定义尺寸属性
+      - 使用 xacro:macro 定义可复用的 box_link 宏
+      - 调用宏创建 base_link 和 top_link
+      - 一个 fixed joint 连接两个 link
+
+    但是文件中有 3 个错误需要你修复。
+
+  步骤:
+    1. 修复 xacro 命名空间 URL 的拼写错误
+    2. 修复宏内部的属性引用语法
+    3. 修复宏调用时的参数名拼写错误
+    4. 修复完成后，删除文件顶部的 "I AM NOT DONE" 注释
+-->
+
+<!-- BUG 1: 命名空间 URL 拼写错误，"xacr" 少了一个 "o"，应为 http://www.ros.org/wiki/xacro -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacr" name="xacro_robot">
+
+  <!-- 定义属性 -->
+  <xacro:property name="base_width" value="0.5" />
+  <xacro:property name="base_length" value="1.0" />
+  <xacro:property name="base_height" value="0.2" />
+
+  <!-- 定义宏：创建一个 box link -->
+  <xacro:macro name="box_link" params="name width length height color_name r g b">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <!-- BUG 2: 属性引用语法错误，$() 应为 ${} -->
+          <box size="$(width) $(length) $(height)" />
+        </geometry>
+        <material name="${color_name}">
+          <color rgba="${r} ${g} ${b} 1.0" />
+        </material>
+      </visual>
+    </link>
+  </xacro:macro>
+
+  <!-- 调用宏创建 base_link -->
+  <xacro:box_link name="base_link"
+    width="${base_width}" length="${base_length}" height="${base_height}"
+    color_name="blue" r="0" g="0" b="1" />
+
+  <!-- 调用宏创建 top_link -->
+  <!-- BUG 3: 参数名 "widht" 拼写错误，应为 "width" -->
+  <xacro:box_link name="top_link"
+    widht="0.3" length="0.3" height="0.1"
+    color_name="red" r="1" g="0" b="0" />
+
+  <!-- 用 fixed joint 连接两个 link -->
+  <joint name="base_to_top" type="fixed">
+    <parent link="base_link" />
+    <child link="top_link" />
+    <origin xyz="0 0 ${base_height}" />
+  </joint>
+
+</robot>

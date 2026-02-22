@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+<!-- I AM NOT DONE -->
+<!--
+  练习: xacro_params
+  模块: 05 - URDF 与机器人建模
+  难度: ★★★☆☆
+
+  学习目标:
+    掌握 Xacro 的参数化建模技术 -- 使用属性和宏构建
+    可配置的机械臂模型。
+
+  说明:
+    你需要完成一个参数化的双段机械臂模型：
+      - base_link（基座，已提供）
+      - segment_1（第一段臂，通过 revolute joint 连接到 base_link）
+      - segment_2（第二段臂，通过 revolute joint 连接到 segment_1）
+
+    每段臂由一个圆柱体 link 和一个 revolute joint 组成。
+    你需要用 xacro:property 定义尺寸参数，用 xacro:macro 定义
+    可复用的 arm_segment 宏，然后调用宏两次来构建机械臂。
+
+  步骤:
+    1. 定义 xacro:property（arm_length 和 arm_radius）
+    2. 定义 xacro:macro "arm_segment"（包含 cylinder link + revolute joint）
+    3. 调用宏两次创建双段机械臂
+    4. 完成后，删除文件顶部的 "I AM NOT DONE" 注释
+-->
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="param_arm">
+
+  <!-- TODO 1: 定义 xacro:property -->
+  <!-- 定义以下两个属性:
+       - arm_length: 值为 0.5（臂段长度，单位: 米）
+       - arm_radius: 值为 0.05（臂段半径，单位: 米）
+  -->
+
+  <!-- TODO 2: 定义 xacro:macro "arm_segment" -->
+  <!-- 宏参数: name, parent, length, radius
+       宏内容:
+         (a) 一个 link，名称为 ${name}，包含:
+             - visual 元素
+             - origin: xyz="0 0 ${length/2}" (将圆柱体中心偏移到顶端)
+             - geometry: cylinder，radius="${radius}"，length="${length}"
+             - material: 任意颜色
+         (b) 一个 joint，名称为 "${name}_joint"，类型为 "revolute"，包含:
+             - parent link="${parent}"
+             - child link="${name}"
+             - origin xyz="0 0 ${length}" (连接到父 link 的顶端)
+             - axis xyz="0 1 0" (绕 y 轴旋转)
+             - limit: lower="-1.57" upper="1.57" effort="100.0" velocity="1.0"
+  -->
+
+  <!-- 基座 link（已提供，无需修改） -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.3 0.3 0.1" />
+      </geometry>
+      <material name="grey">
+        <color rgba="0.5 0.5 0.5 1.0" />
+      </material>
+    </visual>
+  </link>
+
+  <!-- TODO 3: 调用 arm_segment 宏两次 -->
+  <!-- 第一次调用:
+       name="segment_1", parent="base_link",
+       length="${arm_length}", radius="${arm_radius}"
+  -->
+  <!-- 第二次调用:
+       name="segment_2", parent="segment_1",
+       length="${arm_length}", radius="${arm_radius}"
+  -->
+
+</robot>

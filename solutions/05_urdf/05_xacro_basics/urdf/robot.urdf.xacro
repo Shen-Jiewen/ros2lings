@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="xacro_robot">
+
+  <!-- 定义属性 -->
+  <xacro:property name="base_width" value="0.5" />
+  <xacro:property name="base_length" value="1.0" />
+  <xacro:property name="base_height" value="0.2" />
+
+  <!-- 定义宏：创建一个 box link -->
+  <xacro:macro name="box_link" params="name width length height color_name r g b">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${width} ${length} ${height}" />
+        </geometry>
+        <material name="${color_name}">
+          <color rgba="${r} ${g} ${b} 1.0" />
+        </material>
+      </visual>
+    </link>
+  </xacro:macro>
+
+  <!-- 调用宏创建 base_link -->
+  <xacro:box_link name="base_link"
+    width="${base_width}" length="${base_length}" height="${base_height}"
+    color_name="blue" r="0" g="0" b="1" />
+
+  <!-- 调用宏创建 top_link -->
+  <xacro:box_link name="top_link"
+    width="0.3" length="0.3" height="0.1"
+    color_name="red" r="1" g="0" b="0" />
+
+  <!-- 用 fixed joint 连接两个 link -->
+  <joint name="base_to_top" type="fixed">
+    <parent link="base_link" />
+    <child link="top_link" />
+    <origin xyz="0 0 ${base_height}" />
+  </joint>
+
+</robot>
