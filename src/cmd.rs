@@ -19,7 +19,7 @@ pub fn run(cli: Cli) -> Result<()> {
     match cli.command {
         None => cmd_watch(&project_root, &mut state),
         Some(Commands::List) => cmd_list(&state),
-        Some(Commands::Hint) => cmd_hint(&project_root, &state),
+        Some(Commands::Hint) => cmd_hint(&project_root, &mut state),
         Some(Commands::Verify { name }) => cmd_verify(&project_root, &mut state, name.as_deref()),
         Some(Commands::Reset { name }) => cmd_reset(&project_root, &state, &name),
         Some(Commands::Explain { name }) => cmd_explain(&project_root, &state, name.as_deref()),
@@ -49,9 +49,11 @@ fn cmd_list(state: &AppState) -> Result<()> {
         };
 
         let lang = match ex.language {
-            crate::info_file::Language::Cpp => "C++",
-            crate::info_file::Language::Python => "Py ",
-            crate::info_file::Language::C => "C  ",
+            crate::info_file::Language::Cpp => "C++ ",
+            crate::info_file::Language::Python => "Py  ",
+            crate::info_file::Language::C => "C   ",
+            crate::info_file::Language::Urdf => "URDF",
+            crate::info_file::Language::Xacro => "Xacr",
         };
 
         println!(
@@ -72,11 +74,12 @@ fn cmd_list(state: &AppState) -> Result<()> {
     Ok(())
 }
 
-fn cmd_hint(project_root: &Path, state: &AppState) -> Result<()> {
-    let exercise = state.current_exercise();
+fn cmd_hint(project_root: &Path, state: &mut AppState) -> Result<()> {
+    let exercise = state.current_exercise().clone();
     let exercises_root = project_root.join("exercises");
 
-    let (level, content) = crate::hint::show_hint(exercise, &exercises_root, 0)?;
+    let hint_level = state.next_hint_level(&exercise.name);
+    let (level, content) = crate::hint::show_hint(&exercise, &exercises_root, hint_level)?;
 
     output::print_exercise_header(
         &exercise.name,
@@ -86,13 +89,15 @@ fn cmd_hint(project_root: &Path, state: &AppState) -> Result<()> {
     );
     println!("{}", content);
 
-    if level == 0 && exercise.hint_count > 0 {
+    let remaining = exercise.hint_count.saturating_sub(level);
+    if remaining > 0 {
         output::print_info(&format!(
-            "Run 'ros2lings hint' again for more detailed hints ({} available)",
-            exercise.hint_count
+            "Run 'ros2lings hint' again for more detailed hints ({} remaining)",
+            remaining
         ));
     }
 
+    state.save()?;
     Ok(())
 }
 
@@ -123,7 +128,7 @@ fn cmd_verify(project_root: &Path, state: &mut AppState, name: Option<&str>) -> 
     match result {
         VerifyResult::NotReady => {
             output::print_warning(
-                "Exercise still has '// I AM NOT DONE' marker. Remove it when you're ready to verify.",
+                "Exercise still has the 'I AM NOT DONE' marker. Remove it when you're ready to verify.",
             );
         }
         VerifyResult::BuildFailed(output_text) => {
@@ -176,19 +181,38 @@ fn cmd_reset(project_root: &Path, state: &AppState, name: &str) -> Result<()> {
         );
     }
 
-    let sol_src = solutions_dir.join("src");
-    let ex_src = exercises_dir.join("src");
-
-    if sol_src.is_dir() {
-        for entry in std::fs::read_dir(&sol_src)? {
-            let entry = entry?;
-            let dest = ex_src.join(entry.file_name());
-            std::fs::copy(entry.path(), &dest)
-                .with_context(|| format!("Failed to reset {}", dest.display()))?;
+    // Copy all solution subdirectories into the exercise directory
+    let subdirs = ["src", "launch", "urdf", "srv", "msg", "action"];
+    for subdir in &subdirs {
+        let sol_sub = solutions_dir.join(subdir);
+        let ex_sub = exercises_dir.join(subdir);
+        if sol_sub.is_dir() {
+            copy_dir_recursive(&sol_sub, &ex_sub)?;
         }
     }
 
     output::print_success(&format!("Exercise '{}' has been reset.", name));
+    Ok(())
+}
+
+fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<()> {
+    if !dest.exists() {
+        std::fs::create_dir_all(dest)
+            .with_context(|| format!("Failed to create {}", dest.display()))?;
+    }
+    for entry in
+        std::fs::read_dir(src).with_context(|| format!("Failed to read {}", src.display()))?
+    {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dest_path = dest.join(entry.file_name());
+        if src_path.is_dir() {
+            copy_dir_recursive(&src_path, &dest_path)?;
+        } else {
+            std::fs::copy(&src_path, &dest_path)
+                .with_context(|| format!("Failed to reset {}", dest_path.display()))?;
+        }
+    }
     Ok(())
 }
 

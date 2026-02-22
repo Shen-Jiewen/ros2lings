@@ -65,7 +65,7 @@ pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
 
                 if path.starts_with(&current_dir) {
                     if let Some(ext) = path.extension() {
-                        if let Some("cpp" | "py" | "c" | "h" | "hpp") = ext.to_str() {
+                        if let Some("cpp" | "py" | "c" | "h" | "hpp" | "urdf" | "xacro" | "xml" | "yaml" | "yml") = ext.to_str() {
                             println!();
                             output::print_info(&format!(
                                 "File changed: {}",
@@ -83,11 +83,20 @@ pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
                     break;
                 }
                 KeyCode::Char('h') => {
-                    let exercise = state.current_exercise();
-                    match crate::hint::show_hint(exercise, &exercises_root, 0) {
-                        Ok((_, content)) => {
+                    let exercise = state.current_exercise().clone();
+                    let hint_level = state.next_hint_level(&exercise.name);
+                    match crate::hint::show_hint(&exercise, &exercises_root, hint_level) {
+                        Ok((level, content)) => {
                             println!();
                             println!("{}", content);
+                            let remaining = exercise.hint_count.saturating_sub(level);
+                            if remaining > 0 {
+                                output::print_info(&format!(
+                                    "Press 'h' again for more hints ({} remaining)",
+                                    remaining
+                                ));
+                            }
+                            let _ = state.save();
                         }
                         Err(e) => output::print_error(&format!("Hint error: {}", e)),
                     }
@@ -120,8 +129,12 @@ fn show_current_exercise(state: &AppState, exercises_root: &Path) {
     let (done, total) = state.progress();
     output::print_progress_bar(done, total);
     println!();
-    let source_dir = exercises_root.join(&ex.dir).join("src");
-    output::print_info(&format!("Open the exercise: {}", source_dir.display()));
+    let exercise = Exercise::new(ex.clone(), exercises_root.to_path_buf());
+    let path_display = match exercise.source_file() {
+        Ok(path) => format!("{}", path.display()),
+        Err(_) => format!("{}", exercises_root.join(&ex.dir).display()),
+    };
+    output::print_info(&format!("Open the exercise: {}", path_display));
     println!();
 }
 
@@ -137,7 +150,7 @@ fn run_verify(
 
     match pipeline.verify(&exercise)? {
         VerifyResult::NotReady => {
-            output::print_warning("Remove '// I AM NOT DONE' when you're ready to verify.");
+            output::print_warning("Remove the 'I AM NOT DONE' marker when you're ready to verify.");
         }
         VerifyResult::BuildFailed(out) => {
             output::print_error("Build failed!");

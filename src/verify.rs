@@ -46,7 +46,7 @@ impl VerifyPipeline {
                 return Ok(VerifyResult::TestFailed(format!("{}\n{}", stdout, stderr)));
             }
 
-            let test_result_output = self.colcon_test_result()?;
+            let test_result_output = self.colcon_test_result(exercise)?;
             if !test_result_output.status.success() {
                 let stdout = String::from_utf8_lossy(&test_result_output.stdout).to_string();
                 return Ok(VerifyResult::TestFailed(stdout));
@@ -97,17 +97,19 @@ impl VerifyPipeline {
             .with_context(|| format!("Failed to run colcon test for {}", pkg))
     }
 
-    fn colcon_test_result(&self) -> Result<Output> {
+    fn colcon_test_result(&self, exercise: &Exercise) -> Result<Output> {
+        let pkg = exercise.info.package_name();
         let shell_cmd = format!(
             "{}colcon test-result \
-             --build-base /tmp/ros2lings_build",
+             --test-result-base /tmp/ros2lings_build/{}",
             self.ros2_env.shell_prefix(),
+            pkg,
         );
 
         Command::new("bash")
             .args(["-c", &shell_cmd])
             .output()
-            .with_context(|| "Failed to get test results")
+            .with_context(|| format!("Failed to get test results for {}", pkg))
     }
 }
 

@@ -49,6 +49,8 @@ pub enum Language {
     Cpp,
     Python,
     C,
+    Urdf,
+    Xacro,
 }
 
 impl InfoFile {
@@ -256,7 +258,7 @@ hint = "h"
 
     #[test]
     fn test_all_languages_parse() {
-        for lang in ["cpp", "python", "c"] {
+        for lang in ["cpp", "python", "c", "urdf", "xacro"] {
             let toml_str = format!(
                 r#"
 format_version = 1

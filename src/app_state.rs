@@ -1,6 +1,6 @@
 use crate::info_file::ExerciseInfo;
 use anyhow::{Context, Result};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 const STATE_FILE: &str = ".ros2lings-state.txt";
@@ -9,6 +9,7 @@ pub struct AppState {
     pub exercises: Vec<ExerciseInfo>,
     pub current_index: usize,
     pub done: HashSet<String>,
+    hint_levels: HashMap<String, u32>,
     state_file: PathBuf,
 }
 
@@ -19,6 +20,7 @@ impl AppState {
             exercises,
             current_index: 0,
             done: HashSet::new(),
+            hint_levels: HashMap::new(),
             state_file,
         };
 
@@ -49,6 +51,15 @@ impl AppState {
                         self.done.insert(name.to_string());
                     }
                 }
+            } else if let Some(value) = line.strip_prefix("hints=") {
+                for pair in value.split(',') {
+                    let pair = pair.trim();
+                    if let Some((name, level_str)) = pair.split_once(':') {
+                        if let Ok(level) = level_str.parse::<u32>() {
+                            self.hint_levels.insert(name.to_string(), level);
+                        }
+                    }
+                }
             }
         }
 
@@ -59,10 +70,17 @@ impl AppState {
         let mut done_list: Vec<&str> = self.done.iter().map(|s| s.as_str()).collect();
         done_list.sort();
         let current_name = &self.exercises[self.current_index].name;
+        let mut hints_pairs: Vec<String> = self
+            .hint_levels
+            .iter()
+            .map(|(k, v)| format!("{}:{}", k, v))
+            .collect();
+        hints_pairs.sort();
         let content = format!(
-            "# ROS2lings learning progress — do not edit manually\ncurrent={}\ndone={}\n",
+            "# ROS2lings learning progress — do not edit manually\ncurrent={}\ndone={}\nhints={}\n",
             current_name,
-            done_list.join(",")
+            done_list.join(","),
+            hints_pairs.join(","),
         );
         std::fs::write(&self.state_file, content).with_context(|| "Failed to write state file")?;
         Ok(())
@@ -103,6 +121,19 @@ impl AppState {
 
     pub fn find_exercise(&self, name: &str) -> Option<usize> {
         self.exercises.iter().position(|e| e.name == name)
+    }
+
+    /// Returns the current hint level for an exercise, then increments for next call.
+    pub fn next_hint_level(&mut self, exercise_name: &str) -> u32 {
+        let level = self.hint_levels.get(exercise_name).copied().unwrap_or(0);
+        self.hint_levels
+            .insert(exercise_name.to_string(), level + 1);
+        level
+    }
+
+    #[cfg(test)]
+    pub fn current_hint_level(&self, exercise_name: &str) -> u32 {
+        self.hint_levels.get(exercise_name).copied().unwrap_or(0)
     }
 }
 
@@ -227,5 +258,34 @@ mod tests {
         let state = AppState::load(tmp.path(), make_exercises()).unwrap();
         assert_eq!(state.find_exercise("ex2"), Some(1));
         assert_eq!(state.find_exercise("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_hint_level_progression() {
+        let tmp = TempDir::new().unwrap();
+        let mut state = AppState::load(tmp.path(), make_exercises()).unwrap();
+        assert_eq!(state.current_hint_level("ex1"), 0);
+        assert_eq!(state.next_hint_level("ex1"), 0);
+        assert_eq!(state.current_hint_level("ex1"), 1);
+        assert_eq!(state.next_hint_level("ex1"), 1);
+        assert_eq!(state.current_hint_level("ex1"), 2);
+    }
+
+    #[test]
+    fn test_hint_levels_persist() {
+        let tmp = TempDir::new().unwrap();
+        {
+            let mut state = AppState::load(tmp.path(), make_exercises()).unwrap();
+            state.next_hint_level("ex1"); // 0 -> stored as 1
+            state.next_hint_level("ex1"); // 1 -> stored as 2
+            state.next_hint_level("ex2"); // 0 -> stored as 1
+            state.save().unwrap();
+        }
+        {
+            let state = AppState::load(tmp.path(), make_exercises()).unwrap();
+            assert_eq!(state.current_hint_level("ex1"), 2);
+            assert_eq!(state.current_hint_level("ex2"), 1);
+            assert_eq!(state.current_hint_level("ex3"), 0);
+        }
     }
 }
