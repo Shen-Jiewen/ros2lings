@@ -1,6 +1,6 @@
 # ROS2lings
 
-[![CI](https://github.com/USERNAME/ros2lings/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/ros2lings/actions/workflows/ci.yml)
+[![CI](https://github.com/Shen-Jiewen/ros2lings/actions/workflows/ci.yml/badge.svg)](https://github.com/Shen-Jiewen/ros2lings/actions/workflows/ci.yml)
 
 **Learn ROS2 by fixing broken code** — like [rustlings](https://github.com/rust-lang/rustlings), but for ROS2.
 
@@ -16,7 +16,7 @@ ROS2lings guides you through 27 exercises that teach ROS2 core concepts. Each ex
 ## Installation
 
 ```bash
-git clone https://github.com/USERNAME/ros2lings.git
+git clone https://github.com/Shen-Jiewen/ros2lings.git
 cd ros2lings
 cargo install --path .
 ```
