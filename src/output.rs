@@ -94,6 +94,7 @@ pub fn print_progress_bar(done: usize, total: usize) {
     let _ = write!(stdout, "{}", ResetColor);
 }
 
+#[allow(dead_code)]
 pub fn print_welcome(message: &str) {
     let mut stdout = io::stdout();
     let _ = writeln!(

@@ -1,7 +1,8 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::PathBuf;
 use std::process::Command;
 
+#[allow(dead_code)]
 pub struct Ros2Env {
     pub distro: String,
     pub setup_bash: PathBuf,
@@ -30,6 +31,7 @@ impl Ros2Env {
         )
     }
 
+    #[allow(dead_code)]
     pub fn check_dependencies(&self) -> Result<Vec<String>> {
         let mut missing = Vec::new();
         for tool in &["colcon", "cmake"] {

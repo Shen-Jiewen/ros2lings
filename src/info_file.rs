@@ -3,6 +3,7 @@ use serde::Deserialize;
 use std::path::Path;
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct InfoFile {
     pub format_version: u32,
     pub welcome_message: Option<String>,
@@ -21,6 +22,7 @@ pub struct ExerciseInfo {
     pub estimated_minutes: u32,
     pub hint_count: u32,
     #[serde(default)]
+    #[allow(dead_code)]
     pub depends_on: Vec<String>,
     #[serde(default = "default_true")]
     pub test: bool,
@@ -76,6 +78,7 @@ impl ExerciseInfo {
         format!("ros2lings_{}", self.name)
     }
 
+    #[allow(dead_code)]
     pub fn exercise_path(&self, exercises_root: &Path) -> std::path::PathBuf {
         exercises_root.join(&self.dir)
     }
