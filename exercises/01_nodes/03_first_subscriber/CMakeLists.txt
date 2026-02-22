@@ -15,7 +15,8 @@ install(TARGETS first_subscriber DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_first_subscriber test/test_first_subscriber.cpp)
+  ament_add_gtest(test_first_subscriber test/test_first_subscriber.cpp src/first_subscriber.cpp)
+  target_compile_definitions(test_first_subscriber PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_first_subscriber rclcpp std_msgs)
 endif()
 

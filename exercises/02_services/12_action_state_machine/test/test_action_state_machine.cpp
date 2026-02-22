@@ -4,9 +4,15 @@
 #include <ros2lings_interfaces/action/fibonacci.hpp>
 #include <memory>
 #include <vector>
+#include <chrono>
+
+// Student source is compiled together with this test via CMakeLists.txt.
+// The student's FibonacciStateMachine class is available because main()
+// is guarded by #ifndef ROS2LINGS_TEST.
 
 using Fibonacci = ros2lings_interfaces::action::Fibonacci;
-using GoalHandleFibonacci = rclcpp_action::ServerGoalHandle<Fibonacci>;
+using GoalHandleFibonacci = rclcpp_action::ClientGoalHandle<Fibonacci>;
+using namespace std::chrono_literals;
 
 class ActionStateMachineTest : public ::testing::Test {
 protected:
@@ -22,104 +28,85 @@ protected:
   }
 };
 
-TEST_F(ActionStateMachineTest, CancelShouldBeAccepted) {
-  // Bug 1 验证: handle_cancel 应该返回 ACCEPT
-  // 正确的实现应该允许取消
-  auto response = rclcpp_action::CancelResponse::ACCEPT;
-  EXPECT_EQ(response, rclcpp_action::CancelResponse::ACCEPT)
-    << "handle_cancel 应该返回 ACCEPT，允许客户端取消任务";
-}
-
-TEST_F(ActionStateMachineTest, HandleAcceptedMustStartExecution) {
-  // Bug 2 验证: handle_accepted 必须启动执行线程
-  // 如果不启动，目标会卡在 ACCEPTED 状态
-  bool execution_started = false;
-
-  auto node = std::make_shared<rclcpp::Node>("test_state_machine_node");
-  auto server = rclcpp_action::create_server<Fibonacci>(
-    node,
-    "test_state_machine",
-    [](const rclcpp_action::GoalUUID &, std::shared_ptr<const Fibonacci::Goal>) {
-      return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
-    },
-    [](const std::shared_ptr<GoalHandleFibonacci>) {
-      return rclcpp_action::CancelResponse::ACCEPT;
-    },
-    [&execution_started](const std::shared_ptr<GoalHandleFibonacci>) {
-      // 正确的 handle_accepted 应该启动执行
-      execution_started = true;  // 模拟启动
-    });
-
+TEST_F(ActionStateMachineTest, StudentNodeCanBeCreated) {
+  auto server = std::make_shared<FibonacciStateMachine>();
   ASSERT_NE(server, nullptr);
-  // 在正确的实现中，handle_accepted 应该启动一个执行线程
-  // 而不是什么都不做
+  EXPECT_EQ(std::string(server->get_name()), "fibonacci_state_machine");
 }
 
-TEST_F(ActionStateMachineTest, ResultMustBeSetAfterComputation) {
-  // Bug 3 验证: 结果应该在完整计算之后设置
-  int order = 7;
-  std::vector<int64_t> partial_sequence;
-  partial_sequence.push_back(0);
-  partial_sequence.push_back(1);
+TEST_F(ActionStateMachineTest, GoalExecutesAndReturnsCompleteResult) {
+  // Bug 2: handle_accepted must start execution thread
+  // Bug 3: result must be set after computation, not before
+  auto server_node = std::make_shared<FibonacciStateMachine>();
+  auto client_node = std::make_shared<rclcpp::Node>("test_sm_client");
+  auto client = rclcpp_action::create_client<Fibonacci>(client_node, "fibonacci");
 
-  // 错误的做法: 在计算前就设置结果
-  auto premature_result = partial_sequence;  // 只有 [0, 1]
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(server_node);
+  executor.add_node(client_node);
 
-  // 正确: 先完成计算
-  for (int i = 2; i < order; ++i) {
-    partial_sequence.push_back(partial_sequence[i - 1] + partial_sequence[i - 2]);
-  }
+  ASSERT_TRUE(client->wait_for_action_server(2s))
+    << "Student's action server 'fibonacci' should be available";
 
-  auto correct_result = partial_sequence;  // [0, 1, 1, 2, 3, 5, 8]
+  auto goal_msg = Fibonacci::Goal();
+  goal_msg.order = 7;
 
-  // 过早设置的结果是不完整的
-  EXPECT_EQ(premature_result.size(), 2u) << "过早设置的结果只有 2 个元素";
-  EXPECT_EQ(correct_result.size(), 7u) << "正确的结果应有 7 个元素";
-  EXPECT_EQ(correct_result.back(), 8) << "Fibonacci(7) 的最后一个元素应为 8";
+  auto send_goal_future = client->async_send_goal(goal_msg);
+  auto goal_status = executor.spin_until_future_complete(send_goal_future, 5s);
+  ASSERT_EQ(goal_status, rclcpp::FutureReturnCode::SUCCESS);
+
+  auto goal_handle = send_goal_future.get();
+  ASSERT_NE(goal_handle, nullptr) << "Goal should be accepted";
+
+  auto result_future = client->async_get_result(goal_handle);
+  auto result_status = executor.spin_until_future_complete(result_future, 5s);
+  ASSERT_EQ(result_status, rclcpp::FutureReturnCode::SUCCESS)
+    << "Goal should complete (handle_accepted must start execution thread)";
+
+  auto wrapped_result = result_future.get();
+  ASSERT_EQ(wrapped_result.code, rclcpp_action::ResultCode::SUCCEEDED)
+    << "Goal should succeed";
+
+  // Fibonacci(7): 0, 1, 1, 2, 3, 5, 8
+  // Bug 3 verification: result must contain the COMPLETE sequence
+  auto & seq = wrapped_result.result->sequence;
+  ASSERT_EQ(seq.size(), 7u)
+    << "Result must contain all 7 elements (succeed must be called after computation)";
+  EXPECT_EQ(seq[0], 0);
+  EXPECT_EQ(seq[1], 1);
+  EXPECT_EQ(seq[6], 8);
 }
 
-TEST_F(ActionStateMachineTest, CorrectStateTransitionOrder) {
-  // 验证正确的状态转换顺序:
-  // 1. handle_goal -> ACCEPT
-  // 2. handle_accepted -> 启动执行线程
-  // 3. execute: 计算 + 反馈
-  // 4. succeed(result) — 在计算完成后
+TEST_F(ActionStateMachineTest, CancelIsAccepted) {
+  // Bug 1: handle_cancel must return ACCEPT, not REJECT
+  auto server_node = std::make_shared<FibonacciStateMachine>();
+  auto client_node = std::make_shared<rclcpp::Node>("test_cancel_client");
+  auto client = rclcpp_action::create_client<Fibonacci>(client_node, "fibonacci");
 
-  std::vector<std::string> transitions;
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(server_node);
+  executor.add_node(client_node);
 
-  transitions.push_back("goal_received");
-  transitions.push_back("goal_accepted");
-  transitions.push_back("execution_started");  // 不能跳过!
-  transitions.push_back("computing");
-  transitions.push_back("result_set");
+  ASSERT_TRUE(client->wait_for_action_server(2s));
 
-  ASSERT_EQ(transitions.size(), 5u);
-  EXPECT_EQ(transitions[0], "goal_received");
-  EXPECT_EQ(transitions[2], "execution_started")
-    << "handle_accepted 之后必须启动执行";
-  EXPECT_EQ(transitions[4], "result_set")
-    << "结果必须在计算完成之后设置";
-}
+  // Send a goal with a large order to give time to cancel
+  auto goal_msg = Fibonacci::Goal();
+  goal_msg.order = 1000000;
 
-TEST_F(ActionStateMachineTest, ActionServerCanBeCreatedWithCorrectCallbacks) {
-  auto node = std::make_shared<rclcpp::Node>("test_correct_callbacks");
+  auto send_goal_future = client->async_send_goal(goal_msg);
+  auto goal_status = executor.spin_until_future_complete(send_goal_future, 5s);
+  ASSERT_EQ(goal_status, rclcpp::FutureReturnCode::SUCCESS);
 
-  auto server = rclcpp_action::create_server<Fibonacci>(
-    node,
-    "test_fibonacci_sm",
-    // handle_goal
-    [](const rclcpp_action::GoalUUID &, std::shared_ptr<const Fibonacci::Goal>) {
-      return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
-    },
-    // handle_cancel — 必须返回 ACCEPT
-    [](const std::shared_ptr<GoalHandleFibonacci>) {
-      return rclcpp_action::CancelResponse::ACCEPT;
-    },
-    // handle_accepted — 必须启动执行
-    [](const std::shared_ptr<GoalHandleFibonacci> goal_handle) {
-      // 在真实代码中这里应该启动线程
-      (void)goal_handle;
-    });
+  auto goal_handle = send_goal_future.get();
+  ASSERT_NE(goal_handle, nullptr);
 
-  ASSERT_NE(server, nullptr);
+  // Request cancellation
+  auto cancel_future = client->async_cancel_goal(goal_handle);
+  auto cancel_status = executor.spin_until_future_complete(cancel_future, 5s);
+  ASSERT_EQ(cancel_status, rclcpp::FutureReturnCode::SUCCESS);
+
+  auto cancel_response = cancel_future.get();
+  // If handle_cancel returns ACCEPT, cancellation should succeed
+  EXPECT_FALSE(cancel_response->goals_canceling.empty())
+    << "handle_cancel should return ACCEPT to allow cancellation";
 }

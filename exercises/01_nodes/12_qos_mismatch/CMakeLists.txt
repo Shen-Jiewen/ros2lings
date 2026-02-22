@@ -15,7 +15,8 @@ install(TARGETS qos_mismatch DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_qos_mismatch test/test_qos_mismatch.cpp)
+  ament_add_gtest(test_qos_mismatch test/test_qos_mismatch.cpp src/qos_mismatch.cpp)
+  target_compile_definitions(test_qos_mismatch PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_qos_mismatch rclcpp std_msgs)
 endif()
 

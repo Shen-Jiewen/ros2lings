@@ -19,6 +19,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#ifndef ROS2LINGS_TEST
 int main(int argc, char * argv[])
 {
   // TODO: rclcpp::init() 需要 argc 和 argv 来初始化 ROS2 上下文
@@ -33,3 +34,4 @@ int main(int argc, char * argv[])
   rclcpp::shutdown();
   return 0;
 }
+#endif

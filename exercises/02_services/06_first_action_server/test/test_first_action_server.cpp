@@ -4,9 +4,15 @@
 #include <ros2lings_interfaces/action/fibonacci.hpp>
 #include <memory>
 #include <vector>
+#include <chrono>
+
+// Student source is compiled together with this test via CMakeLists.txt.
+// The student's FibonacciActionServer class is available because main()
+// is guarded by #ifndef ROS2LINGS_TEST.
 
 using Fibonacci = ros2lings_interfaces::action::Fibonacci;
-using GoalHandleFibonacci = rclcpp_action::ServerGoalHandle<Fibonacci>;
+using GoalHandleFibonacci = rclcpp_action::ClientGoalHandle<Fibonacci>;
+using namespace std::chrono_literals;
 
 class FirstActionServerTest : public ::testing::Test {
 protected:
@@ -22,72 +28,53 @@ protected:
   }
 };
 
-TEST_F(FirstActionServerTest, FibonacciComputationIsCorrect) {
-  // 测试 Fibonacci 计算逻辑（不依赖 Action Server）
-  int order = 7;
-  std::vector<int64_t> sequence;
-  sequence.push_back(0);
-  sequence.push_back(1);
-  for (int i = 2; i < order; ++i) {
-    sequence.push_back(sequence[i - 1] + sequence[i - 2]);
-  }
-
-  // Fibonacci(7): 0, 1, 1, 2, 3, 5, 8
-  ASSERT_EQ(sequence.size(), 7u);
-  EXPECT_EQ(sequence[0], 0);
-  EXPECT_EQ(sequence[1], 1);
-  EXPECT_EQ(sequence[2], 1);
-  EXPECT_EQ(sequence[3], 2);
-  EXPECT_EQ(sequence[4], 3);
-  EXPECT_EQ(sequence[5], 5);
-  EXPECT_EQ(sequence[6], 8);
-}
-
-TEST_F(FirstActionServerTest, GoalResponseTypes) {
-  // 测试 GoalResponse 枚举值存在
-  auto accept = rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
-  auto reject = rclcpp_action::GoalResponse::REJECT;
-  EXPECT_NE(static_cast<int>(accept), static_cast<int>(reject));
-}
-
-TEST_F(FirstActionServerTest, CancelResponseTypes) {
-  // 测试 CancelResponse 枚举值存在
-  auto accept = rclcpp_action::CancelResponse::ACCEPT;
-  auto reject = rclcpp_action::CancelResponse::REJECT;
-  EXPECT_NE(static_cast<int>(accept), static_cast<int>(reject));
-}
-
-TEST_F(FirstActionServerTest, CanCreateActionServer) {
-  auto node = std::make_shared<rclcpp::Node>("test_action_server_node");
-
-  auto server = rclcpp_action::create_server<Fibonacci>(
-    node,
-    "test_fibonacci",
-    [](const rclcpp_action::GoalUUID &, std::shared_ptr<const Fibonacci::Goal>) {
-      return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
-    },
-    [](const std::shared_ptr<GoalHandleFibonacci>) {
-      return rclcpp_action::CancelResponse::ACCEPT;
-    },
-    [](const std::shared_ptr<GoalHandleFibonacci>) {
-      // handle_accepted
-    });
-
+TEST_F(FirstActionServerTest, StudentNodeCanBeCreated) {
+  auto server = std::make_shared<FibonacciActionServer>();
   ASSERT_NE(server, nullptr);
+  EXPECT_EQ(std::string(server->get_name()), "fibonacci_action_server");
 }
 
-TEST_F(FirstActionServerTest, FibonacciMessageTypes) {
-  // 测试 Fibonacci Action 消息类型的结构
-  auto goal = Fibonacci::Goal();
-  goal.order = 5;
-  EXPECT_EQ(goal.order, 5);
+TEST_F(FirstActionServerTest, ActionServerAcceptsAndReturnsResult) {
+  auto server_node = std::make_shared<FibonacciActionServer>();
+  auto client_node = std::make_shared<rclcpp::Node>("test_action_client");
+  auto client = rclcpp_action::create_client<Fibonacci>(client_node, "fibonacci");
 
-  auto result = Fibonacci::Result();
-  result.sequence.push_back(0);
-  result.sequence.push_back(1);
-  EXPECT_EQ(result.sequence.size(), 2u);
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(server_node);
+  executor.add_node(client_node);
 
-  auto feedback = Fibonacci::Feedback();
-  feedback.partial_sequence.push_back(0);
-  EXPECT_EQ(feedback.partial_sequence.size(), 1u);
+  // Wait for action server to be available
+  ASSERT_TRUE(client->wait_for_action_server(2s))
+    << "Student's action server 'fibonacci' should be available";
+
+  // Send a goal
+  auto goal_msg = Fibonacci::Goal();
+  goal_msg.order = 7;
+
+  auto send_goal_future = client->async_send_goal(goal_msg);
+  auto goal_status = executor.spin_until_future_complete(send_goal_future, 5s);
+  ASSERT_EQ(goal_status, rclcpp::FutureReturnCode::SUCCESS);
+
+  auto goal_handle = send_goal_future.get();
+  ASSERT_NE(goal_handle, nullptr) << "Goal should be accepted";
+
+  // Wait for result
+  auto result_future = client->async_get_result(goal_handle);
+  auto result_status = executor.spin_until_future_complete(result_future, 5s);
+  ASSERT_EQ(result_status, rclcpp::FutureReturnCode::SUCCESS);
+
+  auto wrapped_result = result_future.get();
+  ASSERT_EQ(wrapped_result.code, rclcpp_action::ResultCode::SUCCEEDED)
+    << "Goal should succeed";
+
+  // Verify the Fibonacci sequence: 0, 1, 1, 2, 3, 5, 8
+  auto & seq = wrapped_result.result->sequence;
+  ASSERT_EQ(seq.size(), 7u);
+  EXPECT_EQ(seq[0], 0);
+  EXPECT_EQ(seq[1], 1);
+  EXPECT_EQ(seq[2], 1);
+  EXPECT_EQ(seq[3], 2);
+  EXPECT_EQ(seq[4], 3);
+  EXPECT_EQ(seq[5], 5);
+  EXPECT_EQ(seq[6], 8);
 }

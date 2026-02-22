@@ -3,9 +3,17 @@
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <ros2lings_interfaces/action/fibonacci.hpp>
 #include <memory>
+#include <thread>
+#include <chrono>
+
+// Student source is compiled together with this test via CMakeLists.txt.
+// The student's FibonacciActionClient class is available because main()
+// is guarded by #ifndef ROS2LINGS_TEST.
 
 using Fibonacci = ros2lings_interfaces::action::Fibonacci;
-using GoalHandleFibonacci = rclcpp_action::ClientGoalHandle<Fibonacci>;
+using GoalHandleServer = rclcpp_action::ServerGoalHandle<Fibonacci>;
+using GoalHandleClient = rclcpp_action::ClientGoalHandle<Fibonacci>;
+using namespace std::chrono_literals;
 
 class ActionClientTest : public ::testing::Test {
 protected:
@@ -21,47 +29,61 @@ protected:
   }
 };
 
-TEST_F(ActionClientTest, CanCreateActionClient) {
-  auto node = std::make_shared<rclcpp::Node>("test_client_node");
-  auto client = rclcpp_action::create_client<Fibonacci>(node, "test_fibonacci");
+TEST_F(ActionClientTest, StudentNodeCanBeCreated) {
+  auto client = std::make_shared<FibonacciActionClient>();
   ASSERT_NE(client, nullptr);
+  EXPECT_EQ(std::string(client->get_name()), "fibonacci_action_client");
 }
 
-TEST_F(ActionClientTest, SendGoalOptionsHasCallbacks) {
-  // 验证 SendGoalOptions 结构体包含所需的回调字段
-  auto options = rclcpp_action::Client<Fibonacci>::SendGoalOptions();
+TEST_F(ActionClientTest, StudentClientSendsGoalAndReceivesResult) {
+  // Create a test action server
+  auto server_node = std::make_shared<rclcpp::Node>("test_action_server");
+  auto action_server = rclcpp_action::create_server<Fibonacci>(
+    server_node,
+    "fibonacci",
+    // handle_goal
+    [](const rclcpp_action::GoalUUID &, std::shared_ptr<const Fibonacci::Goal>) {
+      return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+    },
+    // handle_cancel
+    [](const std::shared_ptr<GoalHandleServer>) {
+      return rclcpp_action::CancelResponse::ACCEPT;
+    },
+    // handle_accepted
+    [](const std::shared_ptr<GoalHandleServer> goal_handle) {
+      std::thread([goal_handle]() {
+        const auto goal = goal_handle->get_goal();
+        auto result = std::make_shared<Fibonacci::Result>();
+        result->sequence.push_back(0);
+        result->sequence.push_back(1);
+        for (int i = 2; i < goal->order; ++i) {
+          result->sequence.push_back(
+            result->sequence[i - 1] + result->sequence[i - 2]);
+        }
+        goal_handle->succeed(result);
+      }).detach();
+    });
 
-  // 设置所有三个回调
-  options.goal_response_callback = [](const GoalHandleFibonacci::SharedPtr &) {};
-  options.feedback_callback = [](GoalHandleFibonacci::SharedPtr,
-    const std::shared_ptr<const Fibonacci::Feedback>) {};
-  options.result_callback = [](const GoalHandleFibonacci::WrappedResult &) {};
+  // Create the student's action client
+  auto client_node = std::make_shared<FibonacciActionClient>();
 
-  // 如果能编译通过，说明回调字段存在
-  SUCCEED();
-}
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(server_node);
+  executor.add_node(client_node);
 
-TEST_F(ActionClientTest, GoalMessageCanBeCreated) {
-  auto goal = Fibonacci::Goal();
-  goal.order = 10;
-  EXPECT_EQ(goal.order, 10);
-}
+  // send_goal should return true since the server is available
+  bool send_result = client_node->send_goal(5);
+  ASSERT_TRUE(send_result) << "send_goal should return true when server is available";
 
-TEST_F(ActionClientTest, ResultCodeEnumValues) {
-  // 验证 ResultCode 枚举值
-  EXPECT_NE(
-    static_cast<int>(rclcpp_action::ResultCode::SUCCEEDED),
-    static_cast<int>(rclcpp_action::ResultCode::ABORTED));
-  EXPECT_NE(
-    static_cast<int>(rclcpp_action::ResultCode::SUCCEEDED),
-    static_cast<int>(rclcpp_action::ResultCode::CANCELED));
-}
+  // Spin to process the goal and result
+  auto start = std::chrono::steady_clock::now();
+  while (!client_node->is_result_received() &&
+         (std::chrono::steady_clock::now() - start) < 5s) {
+    executor.spin_some(50ms);
+  }
 
-TEST_F(ActionClientTest, FeedbackMessageStructure) {
-  auto feedback = Fibonacci::Feedback();
-  feedback.partial_sequence.push_back(0);
-  feedback.partial_sequence.push_back(1);
-  feedback.partial_sequence.push_back(1);
-  EXPECT_EQ(feedback.partial_sequence.size(), 3u);
-  EXPECT_EQ(feedback.partial_sequence[2], 1);
+  EXPECT_TRUE(client_node->is_goal_accepted())
+    << "Student's client should report goal accepted";
+  EXPECT_TRUE(client_node->is_result_received())
+    << "Student's client should report result received";
 }

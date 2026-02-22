@@ -15,7 +15,8 @@ install(TARGETS service_pair DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_service_pair test/test_service_pair.cpp)
+  ament_add_gtest(test_service_pair test/test_service_pair.cpp src/service_pair.cpp)
+  target_compile_definitions(test_service_pair PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_service_pair rclcpp ros2lings_interfaces)
 endif()
 

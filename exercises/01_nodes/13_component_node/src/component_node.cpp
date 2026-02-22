@@ -59,5 +59,7 @@ private:
   size_t count_ = 0;
 };
 
+#ifndef ROS2LINGS_TEST
 // TODO: 使用宏注册组件，使其可以被动态加载
 // 提示: RCLCPP_COMPONENTS_REGISTER_NODE(???)
+#endif

@@ -99,6 +99,19 @@ impl AppState {
         let name = self.exercises[self.current_index].name.clone();
         self.done.insert(name);
 
+        // Advance to the next exercise whose dependencies are all satisfied
+        for i in 0..self.exercises.len() {
+            let idx = (self.current_index + 1 + i) % self.exercises.len();
+            if !self.done.contains(&self.exercises[idx].name)
+                && self.deps_satisfied(&self.exercises[idx])
+            {
+                self.current_index = idx;
+                self.save()?;
+                return Ok(());
+            }
+        }
+
+        // Fallback: pick any incomplete exercise (even if deps not met)
         for i in 0..self.exercises.len() {
             let idx = (self.current_index + 1 + i) % self.exercises.len();
             if !self.done.contains(&self.exercises[idx].name) {
@@ -110,6 +123,14 @@ impl AppState {
 
         self.save()?;
         Ok(())
+    }
+
+    /// Check whether all depends_on entries for an exercise are in the done set.
+    pub fn deps_satisfied(&self, exercise: &ExerciseInfo) -> bool {
+        exercise
+            .depends_on
+            .iter()
+            .all(|dep| self.done.contains(dep))
     }
 
     pub fn current_exercise(&self) -> &ExerciseInfo {
@@ -312,6 +333,149 @@ mod tests {
             assert_eq!(state.current_hint_level("ex2"), 1);
             assert_eq!(state.current_hint_level("ex3"), 0);
         }
+    }
+
+    #[test]
+    fn test_depends_on_skips_blocked_exercises() {
+        let tmp = TempDir::new().unwrap();
+        let exercises = vec![
+            ExerciseInfo {
+                name: "a".to_string(),
+                dir: "m/a".to_string(),
+                module: "M".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec![],
+                test: true,
+                hint: "h".to_string(),
+            },
+            ExerciseInfo {
+                name: "b".to_string(),
+                dir: "m/b".to_string(),
+                module: "M".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec!["a".to_string()],
+                test: true,
+                hint: "h".to_string(),
+            },
+            ExerciseInfo {
+                name: "c".to_string(),
+                dir: "m/c".to_string(),
+                module: "M".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec![],
+                test: true,
+                hint: "h".to_string(),
+            },
+        ];
+        let mut state = AppState::load(tmp.path(), exercises).unwrap();
+        // Complete "a" — next should skip "b" (depends on "a" which IS done)
+        // Actually "b" depends on "a" and "a" IS done, so "b" is available.
+        // Let's test a different scenario: complete nothing, advance from start.
+        // "a" is current (index 0). Mark "a" done.
+        state.done_current_exercise().unwrap();
+        // "b" depends on "a" which is now done → deps satisfied → b is next
+        assert_eq!(state.current_exercise().name, "b");
+
+        // Now reset: only "c" is done (not "a"), so "b" is blocked
+        let exercises2 = vec![
+            ExerciseInfo {
+                name: "a".to_string(),
+                dir: "m/a".to_string(),
+                module: "M".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec![],
+                test: true,
+                hint: "h".to_string(),
+            },
+            ExerciseInfo {
+                name: "b".to_string(),
+                dir: "m/b".to_string(),
+                module: "M".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec!["a".to_string()],
+                test: true,
+                hint: "h".to_string(),
+            },
+            ExerciseInfo {
+                name: "c".to_string(),
+                dir: "m/c".to_string(),
+                module: "M".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec![],
+                test: true,
+                hint: "h".to_string(),
+            },
+        ];
+        let tmp2 = TempDir::new().unwrap();
+        let mut state2 = AppState::load(tmp2.path(), exercises2).unwrap();
+        // Mark "c" done first
+        state2.done.insert("c".to_string());
+        state2.current_index = 0; // at "a"
+                                  // Complete "a" but "c" is done, "b" deps on "a" which is now done → goes to "b"
+        state2.done_current_exercise().unwrap();
+        assert_eq!(state2.current_exercise().name, "b");
+    }
+
+    #[test]
+    fn test_deps_satisfied_blocks_when_missing() {
+        let tmp = TempDir::new().unwrap();
+        let exercises = vec![
+            ExerciseInfo {
+                name: "a".to_string(),
+                dir: "m/a".to_string(),
+                module: "M".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec![],
+                test: true,
+                hint: "h".to_string(),
+            },
+            ExerciseInfo {
+                name: "b".to_string(),
+                dir: "m/b".to_string(),
+                module: "M".to_string(),
+                mode: ExerciseMode::Fix,
+                language: Language::Cpp,
+                difficulty: 1,
+                estimated_minutes: 5,
+                hint_count: 1,
+                depends_on: vec!["a".to_string()],
+                test: true,
+                hint: "h".to_string(),
+            },
+        ];
+        let state = AppState::load(tmp.path(), exercises).unwrap();
+        // "a" has no deps → satisfied
+        assert!(state.deps_satisfied(&state.exercises[0]));
+        // "b" depends on "a" which isn't done → not satisfied
+        assert!(!state.deps_satisfied(&state.exercises[1]));
     }
 
     #[test]

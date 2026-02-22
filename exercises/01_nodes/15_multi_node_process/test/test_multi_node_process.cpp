@@ -1,3 +1,6 @@
+// Test the student's ProducerNode and ConsumerNode classes directly.
+// The student source file is compiled into this test binary via CMakeLists.txt.
+
 #include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/string.hpp>
@@ -21,63 +24,56 @@ protected:
   }
 };
 
-// 测试: MultiThreadedExecutor 可以管理多个节点
-TEST_F(MultiNodeProcessTest, ExecutorManagesMultipleNodes) {
-  auto node1 = std::make_shared<rclcpp::Node>("test_node_1");
-  auto node2 = std::make_shared<rclcpp::Node>("test_node_2");
-
-  rclcpp::executors::MultiThreadedExecutor executor;
-  executor.add_node(node1);
-  executor.add_node(node2);
-
-  // spin_some 应该能正常处理两个节点
-  executor.spin_some();
-  SUCCEED() << "MultiThreadedExecutor 成功管理多个节点";
+TEST_F(MultiNodeProcessTest, ProducerNodeCanBeCreated) {
+  auto producer = std::make_shared<ProducerNode>();
+  ASSERT_NE(producer, nullptr);
+  EXPECT_STREQ(producer->get_name(), "producer_node");
 }
 
-// 测试: 同一进程中的两个节点可以通信
-TEST_F(MultiNodeProcessTest, NodesInSameProcessCommunicate) {
-  auto pub_node = std::make_shared<rclcpp::Node>("test_producer");
-  auto sub_node = std::make_shared<rclcpp::Node>("test_consumer");
+TEST_F(MultiNodeProcessTest, ConsumerNodeCanBeCreated) {
+  auto consumer = std::make_shared<ConsumerNode>();
+  ASSERT_NE(consumer, nullptr);
+  EXPECT_STREQ(consumer->get_name(), "consumer_node");
+}
 
-  bool message_received = false;
-  std::string received_data;
+TEST_F(MultiNodeProcessTest, NodesHaveDifferentNames) {
+  auto producer = std::make_shared<ProducerNode>();
+  auto consumer = std::make_shared<ConsumerNode>();
+  EXPECT_STRNE(producer->get_name(), consumer->get_name())
+    << "Producer and consumer should have different node names";
+}
 
-  auto pub = pub_node->create_publisher<std_msgs::msg::String>("internal_topic", 10);
-  auto sub = sub_node->create_subscription<std_msgs::msg::String>(
-    "internal_topic", 10,
-    [&](const std_msgs::msg::String::SharedPtr msg) {
-      message_received = true;
-      received_data = msg->data;
-    });
+TEST_F(MultiNodeProcessTest, ProducerPublishesOnInternalTopic) {
+  auto producer = std::make_shared<ProducerNode>();
+  size_t pub_count = producer->count_publishers("/internal_topic");
+  EXPECT_GE(pub_count, 1u)
+    << "ProducerNode should have a publisher on /internal_topic";
+}
+
+TEST_F(MultiNodeProcessTest, ConsumerSubscribesToInternalTopic) {
+  auto consumer = std::make_shared<ConsumerNode>();
+  size_t sub_count = consumer->count_subscribers("/internal_topic");
+  EXPECT_GE(sub_count, 1u)
+    << "ConsumerNode should have a subscription on /internal_topic";
+}
+
+TEST_F(MultiNodeProcessTest, ExecutorManagesBothNodes) {
+  auto producer = std::make_shared<ProducerNode>();
+  auto consumer = std::make_shared<ConsumerNode>();
 
   rclcpp::executors::MultiThreadedExecutor executor;
-  executor.add_node(pub_node);
-  executor.add_node(sub_node);
+  executor.add_node(producer);
+  executor.add_node(consumer);
 
-  auto msg = std_msgs::msg::String();
-  msg.data = "多节点测试消息";
-  pub->publish(msg);
-
+  // Spin to let the producer timer fire and consumer receive messages
   auto start = std::chrono::steady_clock::now();
-  while (!message_received &&
+  while (consumer->get_received_count() == 0 &&
          (std::chrono::steady_clock::now() - start) < 3s)
   {
     executor.spin_some();
     std::this_thread::sleep_for(10ms);
   }
 
-  EXPECT_TRUE(message_received) << "同一进程中的节点应能通过话题通信";
-  EXPECT_EQ(received_data, "多节点测试消息");
-}
-
-// 测试: 验证两个节点的名称不同
-TEST_F(MultiNodeProcessTest, NodesHaveDifferentNames) {
-  auto node1 = std::make_shared<rclcpp::Node>("producer_node");
-  auto node2 = std::make_shared<rclcpp::Node>("consumer_node");
-
-  EXPECT_STREQ(node1->get_name(), "producer_node");
-  EXPECT_STREQ(node2->get_name(), "consumer_node");
-  EXPECT_STRNE(node1->get_name(), node2->get_name())
-    << "两个节点应有不同的名称";
+  EXPECT_GT(consumer->get_received_count(), 0)
+    << "Consumer should receive messages from producer via the executor";
 }

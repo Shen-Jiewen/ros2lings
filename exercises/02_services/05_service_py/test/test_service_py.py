@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+import importlib.util
+import os
 import pytest
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import SingleThreadedExecutor
 from ros2lings_interfaces.srv import AddTwoInts
 
 
@@ -12,64 +15,82 @@ def init_rclpy():
     rclpy.shutdown()
 
 
-def test_can_create_service_server():
-    """测试能否成功创建服务服务器"""
-    node = Node('test_srv_create')
-    srv = node.create_service(
-        AddTwoInts, 'test_add_srv',
-        lambda req, res: res)
-    assert srv is not None
-    node.destroy_node()
+def _load_student_module():
+    """Load the student's service_py module using importlib."""
+    src_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        'src', 'service_py.py')
+    spec = importlib.util.spec_from_file_location('service_py', src_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
-def test_can_create_service_client():
-    """测试能否成功创建服务客户端"""
-    node = Node('test_client_create')
-    client = node.create_client(AddTwoInts, 'test_add_client')
-    assert client is not None
-    node.destroy_node()
+def test_student_module_has_server_class():
+    """Student module must define AddTwoIntsServer class."""
+    mod = _load_student_module()
+    assert hasattr(mod, 'AddTwoIntsServer'), \
+        'Student module must define AddTwoIntsServer class'
 
 
-def test_service_computes_correct_sum():
-    """测试服务能正确计算两数之和"""
-    node = Node('test_srv_compute')
+def test_student_server_is_a_node():
+    """AddTwoIntsServer must inherit from rclpy.node.Node."""
+    mod = _load_student_module()
+    server = mod.AddTwoIntsServer()
+    assert isinstance(server, Node), \
+        'AddTwoIntsServer must inherit from Node'
+    assert server.get_name() == 'add_two_ints_server'
+    server.destroy_node()
 
-    # 创建服务器
-    def handle_add(request, response):
-        response.sum = request.a + request.b
-        return response
 
-    srv = node.create_service(AddTwoInts, 'test_compute', handle_add)
+def test_student_server_creates_service():
+    """Student's server should create an 'add_two_ints' service."""
+    mod = _load_student_module()
+    server = mod.AddTwoIntsServer()
 
-    # 创建客户端
-    client = node.create_client(AddTwoInts, 'test_compute')
-    assert client.wait_for_service(timeout_sec=2.0), '服务应当可用'
+    client_node = Node('test_client')
+    client = client_node.create_client(AddTwoInts, 'add_two_ints')
+    assert client.wait_for_service(timeout_sec=2.0), \
+        "Student's service 'add_two_ints' should be available"
 
-    # 发送请求
+    client_node.destroy_node()
+    server.destroy_node()
+
+
+def test_student_server_computes_correct_sum():
+    """Student's handle_add callback should compute a + b correctly."""
+    mod = _load_student_module()
+    server = mod.AddTwoIntsServer()
+
+    client_node = Node('test_compute_client')
+    client = client_node.create_client(AddTwoInts, 'add_two_ints')
+    assert client.wait_for_service(timeout_sec=2.0)
+
     request = AddTwoInts.Request()
     request.a = 10
     request.b = 20
     future = client.call_async(request)
 
-    # 等待结果
-    rclpy.spin_until_future_complete(node, future, timeout_sec=2.0)
-    assert future.done(), '请求应当完成'
+    executor = SingleThreadedExecutor()
+    executor.add_node(server)
+    executor.add_node(client_node)
+    executor.spin_until_future_complete(future, timeout_sec=2.0)
 
+    assert future.done(), 'Request should complete'
     result = future.result()
-    assert result.sum == 30, '10 + 20 应当等于 30'
-    node.destroy_node()
+    assert result.sum == 30, '10 + 20 should equal 30'
+
+    client_node.destroy_node()
+    server.destroy_node()
 
 
-def test_service_handles_negative_numbers():
-    """测试服务能处理负数"""
-    node = Node('test_srv_negative')
+def test_student_server_handles_negative_numbers():
+    """Student's service should handle negative numbers."""
+    mod = _load_student_module()
+    server = mod.AddTwoIntsServer()
 
-    def handle_add(request, response):
-        response.sum = request.a + request.b
-        return response
-
-    srv = node.create_service(AddTwoInts, 'test_negative', handle_add)
-    client = node.create_client(AddTwoInts, 'test_negative')
+    client_node = Node('test_negative_client')
+    client = client_node.create_client(AddTwoInts, 'add_two_ints')
     assert client.wait_for_service(timeout_sec=2.0)
 
     request = AddTwoInts.Request()
@@ -77,9 +98,14 @@ def test_service_handles_negative_numbers():
     request.b = 3
     future = client.call_async(request)
 
-    rclpy.spin_until_future_complete(node, future, timeout_sec=2.0)
-    assert future.done()
+    executor = SingleThreadedExecutor()
+    executor.add_node(server)
+    executor.add_node(client_node)
+    executor.spin_until_future_complete(future, timeout_sec=2.0)
 
+    assert future.done()
     result = future.result()
-    assert result.sum == -2, '-5 + 3 应当等于 -2'
-    node.destroy_node()
+    assert result.sum == -2, '-5 + 3 should equal -2'
+
+    client_node.destroy_node()
+    server.destroy_node()

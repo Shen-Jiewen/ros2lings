@@ -44,6 +44,8 @@ fn cmd_list(state: &AppState) -> Result<()> {
             "\x1b[32m✓\x1b[0m"
         } else if i == state.current_index {
             "\x1b[33m❯\x1b[0m"
+        } else if !state.deps_satisfied(ex) {
+            "\x1b[90m🔒\x1b[0m"
         } else {
             "\x1b[90m✗\x1b[0m"
         };

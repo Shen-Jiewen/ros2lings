@@ -79,8 +79,14 @@ private:
   std::shared_ptr<tf2_ros::Buffer> tf2_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf2_listener_;
   rclcpp::TimerBase::SharedPtr timer_;
+
+#ifdef ROS2LINGS_TEST
+public:
+  std::shared_ptr<tf2_ros::Buffer> get_buffer() const { return tf2_buffer_; }
+#endif
 };
 
+#ifndef ROS2LINGS_TEST
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
@@ -89,3 +95,4 @@ int main(int argc, char * argv[])
   rclcpp::shutdown();
   return 0;
 }
+#endif

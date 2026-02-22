@@ -1,53 +1,142 @@
 #!/usr/bin/env python3
+"""Tests for publisher_py exercise.
+
+These tests import the student's source file and verify that the
+PublisherPy class:
+  1. Exists and inherits from rclpy.node.Node.
+  2. Sets the node name to 'publisher_py'.
+  3. Creates a publisher on the 'chatter' topic for std_msgs/String.
+  4. Creates a timer with a bound callback method.
+  5. The timer callback publishes a message via the publisher.
+"""
+import importlib.util
+import inspect
+import os
+
 import pytest
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
 
+# ---------------------------------------------------------------------------
+# Helper: load student module
+# ---------------------------------------------------------------------------
+
+def _load_student_module():
+    """Load the student's source file as a module."""
+    test_dir = os.path.dirname(os.path.abspath(__file__))
+    src_path = os.path.join(test_dir, '..', 'src', 'publisher_py.py')
+    spec = importlib.util.spec_from_file_location('student_publisher', src_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
 @pytest.fixture(scope='module', autouse=True)
 def init_rclpy():
+    """Initialise / shutdown rclpy once for the whole test module."""
     rclpy.init()
     yield
     rclpy.shutdown()
 
 
-def test_can_create_publisher():
-    """测试能否成功创建发布者"""
-    node = Node('test_pub_create')
-    pub = node.create_publisher(String, 'chatter', 10)
-    assert pub is not None
+@pytest.fixture()
+def student_node():
+    """Instantiate the student's PublisherPy node and destroy it after use."""
+    mod = _load_student_module()
+    node = mod.PublisherPy()
+    yield node
     node.destroy_node()
 
 
-def test_publisher_publishes_message():
-    """测试发布者能否成功发布消息"""
-    node = Node('test_pub_msg')
-    pub = node.create_publisher(String, 'test_chatter', 10)
-
-    msg = String()
-    msg.data = 'Hello from test'
-    pub.publish(msg)
-
-    # 验证发布者的话题名称
-    topic_names = [t[0] for t in node.get_topic_names_and_types()]
-    assert '/test_chatter' in topic_names
-    node.destroy_node()
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
 
 
-def test_timer_callback_bound():
-    """测试定时器能否正确绑定回调函数"""
-    callback_called = [False]
+def test_publisher_class_exists():
+    """The student module must define a class called PublisherPy."""
+    mod = _load_student_module()
+    assert hasattr(mod, 'PublisherPy'), (
+        'The student module must define a class named PublisherPy.'
+    )
+    assert inspect.isclass(mod.PublisherPy), 'PublisherPy must be a class.'
 
-    class TestNode(Node):
-        def __init__(self):
-            super().__init__('test_timer_node')
-            self.timer = self.create_timer(0.1, self.cb)
 
-        def cb(self):
-            callback_called[0] = True
+def test_publisher_inherits_from_node():
+    """PublisherPy must inherit from rclpy.node.Node."""
+    mod = _load_student_module()
+    assert issubclass(mod.PublisherPy, Node), (
+        'PublisherPy must inherit from rclpy.node.Node.'
+    )
 
-    node = TestNode()
-    rclpy.spin_once(node, timeout_sec=0.5)
-    assert callback_called[0], '定时器回调未被调用'
-    node.destroy_node()
+
+def test_node_name(student_node):
+    """The node name must be 'publisher_py'."""
+    assert student_node.get_name() == 'publisher_py', (
+        f"Expected node name 'publisher_py', got '{student_node.get_name()}'."
+    )
+
+
+def test_publisher_attribute_exists(student_node):
+    """The node must have a publisher_ attribute."""
+    assert hasattr(student_node, 'publisher_'), (
+        'PublisherPy must store the publisher as self.publisher_.'
+    )
+
+
+def test_publisher_topic_name(student_node):
+    """The publisher must be on the 'chatter' topic."""
+    pub = student_node.publisher_
+    assert pub.topic_name == '/chatter' or pub.topic_name == 'chatter', (
+        f"Publisher topic must be 'chatter', got '{pub.topic_name}'."
+    )
+
+
+def test_timer_attribute_exists(student_node):
+    """The node must have a timer_ attribute."""
+    assert hasattr(student_node, 'timer_'), (
+        'PublisherPy must store the timer as self.timer_.'
+    )
+
+
+def test_timer_callback_is_callable(student_node):
+    """The timer must be bound to a callable callback (not a string)."""
+    assert student_node.timer_ is not None, 'timer_ must not be None.'
+    # The timer was successfully created, meaning the callback was valid.
+    # Also verify the method itself exists and is callable.
+    assert hasattr(student_node, 'timer_callback'), (
+        'PublisherPy must define a timer_callback method.'
+    )
+    assert callable(student_node.timer_callback), (
+        'timer_callback must be callable.'
+    )
+
+
+def test_timer_callback_publishes(student_node):
+    """Calling timer_callback() must publish a message on the publisher."""
+    # Create a subscriber to capture the published message.
+    received = []
+    sub = student_node.create_subscription(
+        String,
+        'chatter',
+        lambda msg: received.append(msg.data),
+        10,
+    )
+
+    # Invoke the callback directly.
+    student_node.timer_callback()
+
+    # Spin to allow the message to be delivered intra-process.
+    rclpy.spin_once(student_node, timeout_sec=0.5)
+
+    assert len(received) > 0, (
+        'timer_callback() must publish a message via self.publisher_. '
+        'No message was received on the chatter topic.'
+    )
+    sub  # prevent unused-variable lint

@@ -4,6 +4,10 @@
 #include <chrono>
 #include <memory>
 
+// Student source is compiled together with this test via CMakeLists.txt.
+// The student's AddTwoIntsServer class is available because main() is
+// guarded by #ifndef ROS2LINGS_TEST.
+
 using namespace std::chrono_literals;
 using AddTwoInts = ros2lings_interfaces::srv::AddTwoInts;
 
@@ -21,59 +25,46 @@ protected:
   }
 };
 
-TEST_F(FirstServiceTest, CanCreateServiceServer) {
-  auto node = std::make_shared<rclcpp::Node>("test_srv_node");
-  auto service = node->create_service<AddTwoInts>(
-    "add_two_ints",
-    [](const std::shared_ptr<AddTwoInts::Request> request,
-       std::shared_ptr<AddTwoInts::Response> response) {
-      response->sum = request->a + request->b;
-    });
-  ASSERT_NE(service, nullptr);
+TEST_F(FirstServiceTest, StudentNodeCanBeCreated) {
+  // The student's AddTwoIntsServer class must be instantiable
+  auto server = std::make_shared<AddTwoIntsServer>();
+  ASSERT_NE(server, nullptr);
+  EXPECT_EQ(std::string(server->get_name()), "add_two_ints_server");
+}
+
+TEST_F(FirstServiceTest, ServiceIsAvailable) {
+  auto server = std::make_shared<AddTwoIntsServer>();
+  auto client_node = std::make_shared<rclcpp::Node>("test_client_node");
+  auto client = client_node->create_client<AddTwoInts>("add_two_ints");
+  ASSERT_TRUE(client->wait_for_service(2s))
+    << "Student's service 'add_two_ints' should be available";
 }
 
 TEST_F(FirstServiceTest, ServiceComputesCorrectSum) {
-  auto node = std::make_shared<rclcpp::Node>("test_srv_compute");
+  auto server = std::make_shared<AddTwoIntsServer>();
+  auto client_node = std::make_shared<rclcpp::Node>("test_client_compute");
+  auto client = client_node->create_client<AddTwoInts>("add_two_ints");
+  ASSERT_TRUE(client->wait_for_service(2s));
 
-  // 创建服务服务器
-  auto service = node->create_service<AddTwoInts>(
-    "add_two_ints",
-    [](const std::shared_ptr<AddTwoInts::Request> request,
-       std::shared_ptr<AddTwoInts::Response> response) {
-      response->sum = request->a + request->b;
-    });
-
-  // 创建客户端
-  auto client = node->create_client<AddTwoInts>("add_two_ints");
-
-  // 等待服务可用
-  ASSERT_TRUE(client->wait_for_service(2s)) << "服务应当在超时前可用";
-
-  // 发送请求
   auto request = std::make_shared<AddTwoInts::Request>();
   request->a = 3;
   request->b = 7;
   auto future = client->async_send_request(request);
 
-  // 等待结果
-  auto status = rclcpp::spin_until_future_complete(node, future, 2s);
-  ASSERT_EQ(status, rclcpp::FutureReturnCode::SUCCESS) << "服务调用应当成功";
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(server);
+  executor.add_node(client_node);
+  auto status = executor.spin_until_future_complete(future, 2s);
+  ASSERT_EQ(status, rclcpp::FutureReturnCode::SUCCESS);
 
   auto response = future.get();
-  EXPECT_EQ(response->sum, 10) << "3 + 7 应当等于 10";
+  EXPECT_EQ(response->sum, 10) << "3 + 7 should equal 10";
 }
 
 TEST_F(FirstServiceTest, ServiceHandlesNegativeNumbers) {
-  auto node = std::make_shared<rclcpp::Node>("test_srv_negative");
-
-  auto service = node->create_service<AddTwoInts>(
-    "add_two_ints",
-    [](const std::shared_ptr<AddTwoInts::Request> request,
-       std::shared_ptr<AddTwoInts::Response> response) {
-      response->sum = request->a + request->b;
-    });
-
-  auto client = node->create_client<AddTwoInts>("add_two_ints");
+  auto server = std::make_shared<AddTwoIntsServer>();
+  auto client_node = std::make_shared<rclcpp::Node>("test_client_neg");
+  auto client = client_node->create_client<AddTwoInts>("add_two_ints");
   ASSERT_TRUE(client->wait_for_service(2s));
 
   auto request = std::make_shared<AddTwoInts::Request>();
@@ -81,9 +72,12 @@ TEST_F(FirstServiceTest, ServiceHandlesNegativeNumbers) {
   request->b = 3;
   auto future = client->async_send_request(request);
 
-  auto status = rclcpp::spin_until_future_complete(node, future, 2s);
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(server);
+  executor.add_node(client_node);
+  auto status = executor.spin_until_future_complete(future, 2s);
   ASSERT_EQ(status, rclcpp::FutureReturnCode::SUCCESS);
 
   auto response = future.get();
-  EXPECT_EQ(response->sum, -2) << "-5 + 3 应当等于 -2";
+  EXPECT_EQ(response->sum, -2) << "-5 + 3 should equal -2";
 }

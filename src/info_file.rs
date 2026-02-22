@@ -22,7 +22,6 @@ pub struct ExerciseInfo {
     pub estimated_minutes: u32,
     pub hint_count: u32,
     #[serde(default)]
-    #[allow(dead_code)]
     pub depends_on: Vec<String>,
     #[serde(default = "default_true")]
     pub test: bool,

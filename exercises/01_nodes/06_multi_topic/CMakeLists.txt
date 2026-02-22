@@ -15,7 +15,8 @@ install(TARGETS multi_topic DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_multi_topic test/test_multi_topic.cpp)
+  ament_add_gtest(test_multi_topic test/test_multi_topic.cpp src/multi_topic.cpp)
+  target_compile_definitions(test_multi_topic PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_multi_topic rclcpp std_msgs)
 endif()
 

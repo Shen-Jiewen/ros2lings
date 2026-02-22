@@ -15,7 +15,8 @@ install(TARGETS multi_node_process DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_multi_node_process test/test_multi_node_process.cpp)
+  ament_add_gtest(test_multi_node_process test/test_multi_node_process.cpp src/multi_node_process.cpp)
+  target_compile_definitions(test_multi_node_process PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_multi_node_process rclcpp std_msgs)
 endif()
 

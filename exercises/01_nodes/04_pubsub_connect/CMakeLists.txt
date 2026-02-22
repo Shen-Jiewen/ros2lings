@@ -15,7 +15,8 @@ install(TARGETS pubsub_connect DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_pubsub_connect test/test_pubsub_connect.cpp)
+  ament_add_gtest(test_pubsub_connect test/test_pubsub_connect.cpp src/pubsub_connect.cpp)
+  target_compile_definitions(test_pubsub_connect PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_pubsub_connect rclcpp std_msgs)
 endif()
 

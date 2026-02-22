@@ -30,4 +30,6 @@ private:
   size_t count_ = 0;
 };
 
+#ifndef ROS2LINGS_TEST
 RCLCPP_COMPONENTS_REGISTER_NODE(TalkerComponent)
+#endif

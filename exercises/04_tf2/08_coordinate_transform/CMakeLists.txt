@@ -18,7 +18,8 @@ install(TARGETS coordinate_transform DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_coordinate_transform test/test_coordinate_transform.cpp)
+  ament_add_gtest(test_coordinate_transform test/test_coordinate_transform.cpp src/coordinate_transform.cpp)
+  target_compile_definitions(test_coordinate_transform PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_coordinate_transform rclcpp tf2_ros tf2 tf2_geometry_msgs geometry_msgs)
 endif()
 

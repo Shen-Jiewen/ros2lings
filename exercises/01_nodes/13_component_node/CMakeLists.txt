@@ -24,8 +24,9 @@ install(TARGETS talker_component
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_component_node test/test_component_node.cpp)
-  ament_target_dependencies(test_component_node rclcpp std_msgs)
+  ament_add_gtest(test_component_node test/test_component_node.cpp src/component_node.cpp)
+  target_compile_definitions(test_component_node PRIVATE ROS2LINGS_TEST)
+  ament_target_dependencies(test_component_node rclcpp rclcpp_components std_msgs)
 endif()
 
 ament_package()

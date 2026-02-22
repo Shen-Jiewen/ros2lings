@@ -24,7 +24,7 @@ pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
     println!();
     output::print_info("ROS2lings — Watch Mode");
     output::print_info(
-        "Watching for file changes... (press 'q' to quit, 'h' for hint, 'l' to list, 'n' to skip)",
+        "Watching for file changes... ('q' quit, 'h' hint, 'e' explain, 'l' list, 'n' skip)",
     );
     println!();
 
@@ -147,6 +147,21 @@ fn run_watch_loop(
                     }
                     let _ = terminal::enable_raw_mode();
                 }
+                KeyCode::Char('e') => {
+                    let _ = terminal::disable_raw_mode();
+                    let exercise = state.current_exercise();
+                    match crate::explain::get_explanation(exercise, exercises_root) {
+                        Ok(content) => {
+                            println!();
+                            let skin = termimad::MadSkin::default();
+                            skin.print_text(&content);
+                        }
+                        Err(e) => {
+                            output::print_warning(&format!("No explanation available: {}", e));
+                        }
+                    }
+                    let _ = terminal::enable_raw_mode();
+                }
                 KeyCode::Char('l') => {
                     let _ = terminal::disable_raw_mode();
                     show_current_exercise(state, exercises_root);
@@ -154,7 +169,9 @@ fn run_watch_loop(
                 }
                 KeyCode::Char('n') => {
                     let _ = terminal::disable_raw_mode();
-                    output::print_info("Skipping to next exercise...");
+                    output::print_warning(
+                        "Skipping without completing — this may leave prerequisite knowledge gaps.",
+                    );
                     state.done_current_exercise()?;
                     show_current_exercise(state, exercises_root);
                     let _ = terminal::enable_raw_mode();
@@ -213,6 +230,11 @@ fn run_verify(
         }
         VerifyResult::Success => {
             output::print_success(&format!("Exercise '{}' passed!", info.name));
+            // Suggest deeper understanding before advancing
+            let has_explain = exercises_root.join(&info.dir).join("explain.md").exists();
+            if has_explain {
+                output::print_info("Press 'e' to understand the concepts behind this exercise.");
+            }
             state.done_current_exercise()?;
             if state.all_done() {
                 output::print_success("Congratulations! You've completed all exercises!");

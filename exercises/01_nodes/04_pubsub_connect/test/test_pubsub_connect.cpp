@@ -1,3 +1,6 @@
+// Test the student's PubSubConnect class directly.
+// The student source file is compiled into this test binary via CMakeLists.txt.
+
 #include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/string.hpp>
@@ -20,65 +23,43 @@ protected:
   }
 };
 
-TEST_F(PubSubConnectTest, MessageFlowsFromPublisherToSubscriber) {
-  // 创建发布者节点
-  auto pub_node = std::make_shared<rclcpp::Node>("test_pub");
-  auto pub = pub_node->create_publisher<std_msgs::msg::String>("ping", 10);
+TEST_F(PubSubConnectTest, NodeCanBeCreated) {
+  auto node = std::make_shared<PubSubConnect>();
+  ASSERT_NE(node, nullptr);
+}
 
-  // 创建订阅者节点
-  auto sub_node = std::make_shared<rclcpp::Node>("test_sub");
-  std::string received;
-  auto sub = sub_node->create_subscription<std_msgs::msg::String>(
-    "ping", 10,
-    [&received](const std_msgs::msg::String::SharedPtr msg) {
-      received = msg->data;
-    });
+TEST_F(PubSubConnectTest, NodeHasCorrectName) {
+  auto node = std::make_shared<PubSubConnect>();
+  EXPECT_EQ(std::string(node->get_name()), "pubsub_connect");
+}
 
-  // 发布消息
-  auto msg = std_msgs::msg::String();
-  msg.data = "Ping #0";
-  pub->publish(msg);
+TEST_F(PubSubConnectTest, HasPublisherOnPingTopic) {
+  auto node = std::make_shared<PubSubConnect>();
+  size_t pub_count = node->count_publishers("/ping");
+  EXPECT_GE(pub_count, 1u)
+    << "PubSubConnect should have a publisher on /ping topic";
+}
 
-  // 等待消息传递
+TEST_F(PubSubConnectTest, HasSubscriptionOnPingTopic) {
+  auto node = std::make_shared<PubSubConnect>();
+  size_t sub_count = node->count_subscribers("/ping");
+  EXPECT_GE(sub_count, 1u)
+    << "PubSubConnect should have a subscription on /ping topic";
+}
+
+TEST_F(PubSubConnectTest, ReceivedCountIncreases) {
+  auto node = std::make_shared<PubSubConnect>();
+  EXPECT_EQ(node->get_received_count(), 0u);
+
+  // Spin the node to let the timer fire and the internal pub/sub communicate
   auto start = std::chrono::steady_clock::now();
-  while (received.empty() && (std::chrono::steady_clock::now() - start) < 2s) {
-    rclcpp::spin_some(sub_node);
+  while (node->get_received_count() == 0 &&
+         (std::chrono::steady_clock::now() - start) < 3s)
+  {
+    rclcpp::spin_some(node);
     std::this_thread::sleep_for(10ms);
   }
 
-  EXPECT_EQ(received, "Ping #0") << "消息应当从发布者流向订阅者";
-}
-
-TEST_F(PubSubConnectTest, MultipleMessagesReceived) {
-  auto pub_node = std::make_shared<rclcpp::Node>("test_multi_pub");
-  auto pub = pub_node->create_publisher<std_msgs::msg::String>("ping", 10);
-
-  auto sub_node = std::make_shared<rclcpp::Node>("test_multi_sub");
-  int count = 0;
-  auto sub = sub_node->create_subscription<std_msgs::msg::String>(
-    "ping", 10,
-    [&count](const std_msgs::msg::String::SharedPtr) {
-      count++;
-    });
-
-  // 发布 3 条消息
-  for (int i = 0; i < 3; i++) {
-    auto msg = std_msgs::msg::String();
-    msg.data = "Ping #" + std::to_string(i);
-    pub->publish(msg);
-  }
-
-  auto start = std::chrono::steady_clock::now();
-  while (count < 3 && (std::chrono::steady_clock::now() - start) < 2s) {
-    rclcpp::spin_some(sub_node);
-    std::this_thread::sleep_for(10ms);
-  }
-
-  EXPECT_GE(count, 1) << "应当至少收到一条消息";
-}
-
-TEST_F(PubSubConnectTest, TopicNameIsCorrect) {
-  auto node = std::make_shared<rclcpp::Node>("test_topic_name");
-  auto pub = node->create_publisher<std_msgs::msg::String>("ping", 10);
-  EXPECT_EQ(std::string(pub->get_topic_name()), "/ping");
+  EXPECT_GT(node->get_received_count(), 0u)
+    << "received_count should increase as the node publishes and receives messages";
 }
