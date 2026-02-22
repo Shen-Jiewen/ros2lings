@@ -28,6 +28,10 @@ impl AppState {
             state.read_state()?;
         }
 
+        // Prune done entries that don't match any known exercise name
+        let known_names: HashSet<&str> = state.exercises.iter().map(|e| e.name.as_str()).collect();
+        state.done.retain(|name| known_names.contains(name.as_str()));
+
         Ok(state)
     }
 
@@ -258,6 +262,22 @@ mod tests {
         let state = AppState::load(tmp.path(), make_exercises()).unwrap();
         assert_eq!(state.find_exercise("ex2"), Some(1));
         assert_eq!(state.find_exercise("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_unknown_done_entries_pruned() {
+        let tmp = TempDir::new().unwrap();
+        // Manually write a state file with an unknown exercise in done
+        let state_content = "current=ex1\ndone=ex1,ghost_exercise,ex2\n";
+        std::fs::write(tmp.path().join(".ros2lings-state.txt"), state_content).unwrap();
+
+        let state = AppState::load(tmp.path(), make_exercises()).unwrap();
+        // ghost_exercise should be pruned
+        assert!(!state.is_done("ghost_exercise"));
+        assert!(state.is_done("ex1"));
+        assert!(state.is_done("ex2"));
+        // Progress should only count valid exercises
+        assert_eq!(state.progress(), (2, 3));
     }
 
     #[test]

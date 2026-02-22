@@ -8,7 +8,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 enum WatchEvent {
     FileChanged(PathBuf),
@@ -57,9 +57,24 @@ pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
         }
     });
 
+    let mut last_verify = Instant::now() - Duration::from_secs(10);
+
     loop {
         match rx.recv() {
             Ok(WatchEvent::FileChanged(path)) => {
+                // Throttle: ignore events within 1s of the last verify start
+                if last_verify.elapsed() < Duration::from_secs(1) {
+                    continue;
+                }
+
+                // Skip build artifacts and cache directories
+                if path.components().any(|c| {
+                    let s = c.as_os_str().to_string_lossy();
+                    s == "__pycache__" || s == "build" || s == ".cache" || s == "log"
+                }) {
+                    continue;
+                }
+
                 let current = state.current_exercise();
                 let current_dir = exercises_root.join(&current.dir);
 
@@ -71,7 +86,11 @@ pub fn run_watch(project_root: &Path, state: &mut AppState) -> Result<()> {
                                 "File changed: {}",
                                 path.file_name().unwrap_or_default().to_string_lossy()
                             ));
+                            last_verify = Instant::now();
                             run_verify(&pipeline, state, &exercises_root)?;
+
+                            // Drain any queued file events accumulated during verification
+                            while rx.try_recv().is_ok() {}
                         }
                     }
                 }

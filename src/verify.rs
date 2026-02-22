@@ -26,8 +26,7 @@ impl VerifyPipeline {
     }
 
     pub fn verify(&self, exercise: &Exercise) -> Result<VerifyResult> {
-        let source = exercise.source_file()?;
-        if Exercise::has_done_marker(&source)? {
+        if exercise.any_done_marker()? {
             return Ok(VerifyResult::NotReady);
         }
 
@@ -58,17 +57,26 @@ impl VerifyPipeline {
 
     fn colcon_build(&self, exercise: &Exercise) -> Result<Output> {
         let pkg = exercise.info.package_name();
+        let exercise_path = exercise.dir_path();
+
+        // Build --paths: always include the exercise; also include ros2lings_interfaces
+        // so exercises depending on custom msgs/srvs/actions can resolve their deps.
+        let interfaces_dir = self.project_root.join("exercises/ros2lings_interfaces");
+        let paths = if interfaces_dir.is_dir() {
+            format!("{} {}", exercise_path.display(), interfaces_dir.display())
+        } else {
+            format!("{}", exercise_path.display())
+        };
+
         let shell_cmd = format!(
             "{}colcon build \
-             --paths {} \
-             --packages-select {} \
+             --paths {paths} \
+             --packages-up-to {pkg} \
              --build-base /tmp/ros2lings_build \
              --install-base /tmp/ros2lings_install \
              --event-handlers console_direct+ \
              --cmake-args -DCMAKE_BUILD_TYPE=Debug",
             self.ros2_env.shell_prefix(),
-            exercise.dir_path().display(),
-            pkg,
         );
 
         Command::new("bash")

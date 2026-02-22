@@ -23,11 +23,29 @@ impl Exercise {
         self.exercises_root.join(&self.info.dir)
     }
 
+    /// Returns the first matching source file (for display / "open the exercise").
     pub fn source_file(&self) -> Result<PathBuf> {
-        let dir = self.dir_path();
+        let files = self.all_source_files()?;
+        files
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("No source file found in exercise '{}'", self.info.name))
+    }
 
-        // Language-aware search: define (subdirs, extensions) per language
-        let search_plan: Vec<(PathBuf, &[&str])> = match self.info.language {
+    /// Returns ALL candidate source files across all search directories for this language.
+    pub fn all_source_files(&self) -> Result<Vec<PathBuf>> {
+        let dir = self.dir_path();
+        let search_plan = Self::search_plan_for(&self.info.language, &dir);
+
+        let mut results = Vec::new();
+        for (search_dir, extensions) in &search_plan {
+            Self::collect_files_with_extensions(search_dir, extensions, &mut results)?;
+        }
+        Ok(results)
+    }
+
+    fn search_plan_for<'a>(language: &Language, dir: &Path) -> Vec<(PathBuf, &'a [&'a str])> {
+        match language {
             Language::Cpp => vec![
                 (dir.join("src"), &["cpp", "c"]),
             ],
@@ -37,7 +55,7 @@ impl Exercise {
             Language::Python => vec![
                 (dir.join("src"), &["py"]),
                 (dir.join("launch"), &["py"]),
-                (dir.clone(), &["py"]),
+                (dir.to_path_buf(), &["py"]),
             ],
             Language::Urdf => vec![
                 (dir.join("urdf"), &["urdf"]),
@@ -45,20 +63,16 @@ impl Exercise {
             Language::Xacro => vec![
                 (dir.join("urdf"), &["xacro"]),
             ],
-        };
-
-        for (search_dir, extensions) in &search_plan {
-            if let Some(found) = Self::find_file_with_extensions(search_dir, extensions)? {
-                return Ok(found);
-            }
         }
-
-        anyhow::bail!("No source file found in exercise '{}'", self.info.name)
     }
 
-    fn find_file_with_extensions(dir: &Path, extensions: &[&str]) -> Result<Option<PathBuf>> {
+    fn collect_files_with_extensions(
+        dir: &Path,
+        extensions: &[&str],
+        out: &mut Vec<PathBuf>,
+    ) -> Result<()> {
         if !dir.is_dir() {
-            return Ok(None);
+            return Ok(());
         }
         for entry in
             std::fs::read_dir(dir).with_context(|| format!("Failed to read {}", dir.display()))?
@@ -68,12 +82,12 @@ impl Exercise {
             if let Some(ext) = path.extension() {
                 if let Some(ext_str) = ext.to_str() {
                     if extensions.contains(&ext_str) {
-                        return Ok(Some(path));
+                        out.push(path);
                     }
                 }
             }
         }
-        Ok(None)
+        Ok(())
     }
 
     pub fn has_done_marker(source_path: &Path) -> Result<bool> {
@@ -82,6 +96,17 @@ impl Exercise {
         Ok(content.contains(DONE_MARKER)
             || content.contains(DONE_MARKER_PY)
             || content.contains(DONE_MARKER_XML))
+    }
+
+    /// Checks ALL candidate source files for a done marker.
+    /// Returns true if ANY file still contains the marker.
+    pub fn any_done_marker(&self) -> Result<bool> {
+        for path in self.all_source_files()? {
+            if Self::has_done_marker(&path)? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 }
 
@@ -223,6 +248,42 @@ mod tests {
         let ex = Exercise::new(info, tmp.path().to_path_buf());
         let source = ex.source_file().unwrap();
         assert!(source.to_str().unwrap().ends_with(".xacro"));
+    }
+
+    #[test]
+    fn test_any_done_marker_checks_all_files() {
+        let tmp = TempDir::new().unwrap();
+        let src_dir = tmp.path().join("03_launch/first/src");
+        let launch_dir = tmp.path().join("03_launch/first/launch");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::create_dir_all(&launch_dir).unwrap();
+        // src file is clean (no marker)
+        fs::write(src_dir.join("node.py"), "import rclpy").unwrap();
+        // launch file still has marker
+        fs::write(
+            launch_dir.join("first.launch.py"),
+            "# I AM NOT DONE\nfrom launch import LaunchDescription",
+        )
+        .unwrap();
+
+        let info = ExerciseInfo {
+            name: "first".to_string(),
+            dir: "03_launch/first".to_string(),
+            module: "Launch".to_string(),
+            mode: ExerciseMode::Fix,
+            language: Language::Python,
+            difficulty: 1,
+            estimated_minutes: 5,
+            hint_count: 1,
+            depends_on: vec![],
+            test: true,
+            hint: String::new(),
+        };
+        let ex = Exercise::new(info, tmp.path().to_path_buf());
+        // source_file() returns the first match (src/node.py)
+        assert!(ex.source_file().unwrap().to_str().unwrap().contains("src"));
+        // but any_done_marker() must still detect the launch marker
+        assert!(ex.any_done_marker().unwrap());
     }
 
     #[test]

@@ -181,12 +181,18 @@ fn cmd_reset(project_root: &Path, state: &AppState, name: &str) -> Result<()> {
         );
     }
 
-    // Copy all solution subdirectories into the exercise directory
+    // Clean-copy all solution subdirectories into the exercise directory.
+    // First remove the exercise subdir contents, then copy from solution,
+    // ensuring extra files from previous attempts are cleaned up.
     let subdirs = ["src", "launch", "urdf", "srv", "msg", "action"];
     for subdir in &subdirs {
         let sol_sub = solutions_dir.join(subdir);
         let ex_sub = exercises_dir.join(subdir);
         if sol_sub.is_dir() {
+            if ex_sub.is_dir() {
+                std::fs::remove_dir_all(&ex_sub)
+                    .with_context(|| format!("Failed to clean {}", ex_sub.display()))?;
+            }
             copy_dir_recursive(&sol_sub, &ex_sub)?;
         }
     }
