@@ -71,6 +71,25 @@ impl InfoFile {
             anyhow::bail!("info.toml contains no exercises");
         }
 
+        // Validate difficulty range (1–5) to prevent underflow in star rendering
+        for ex in &info.exercises {
+            if ex.difficulty == 0 || ex.difficulty > 5 {
+                anyhow::bail!(
+                    "Exercise '{}': difficulty {} out of range 1–5",
+                    ex.name,
+                    ex.difficulty
+                );
+            }
+        }
+
+        // Validate exercise name uniqueness
+        let mut seen = std::collections::HashSet::new();
+        for ex in &info.exercises {
+            if !seen.insert(&ex.name) {
+                anyhow::bail!("Duplicate exercise name '{}' in info.toml", ex.name);
+            }
+        }
+
         Ok(info)
     }
 }
@@ -280,5 +299,76 @@ hint = "h"
                 "Failed for language: {lang}"
             );
         }
+    }
+
+    #[test]
+    fn test_reject_difficulty_zero() {
+        let toml_str = r#"
+format_version = 1
+[[exercises]]
+name = "t"
+dir = "t"
+module = "t"
+mode = "fix"
+language = "cpp"
+difficulty = 0
+estimated_minutes = 1
+hint_count = 1
+hint = "h"
+"#;
+        let f = write_temp_toml(toml_str);
+        let err = InfoFile::parse(f.path()).unwrap_err();
+        assert!(err.to_string().contains("difficulty 0 out of range"));
+    }
+
+    #[test]
+    fn test_reject_difficulty_too_high() {
+        let toml_str = r#"
+format_version = 1
+[[exercises]]
+name = "t"
+dir = "t"
+module = "t"
+mode = "fix"
+language = "cpp"
+difficulty = 6
+estimated_minutes = 1
+hint_count = 1
+hint = "h"
+"#;
+        let f = write_temp_toml(toml_str);
+        let err = InfoFile::parse(f.path()).unwrap_err();
+        assert!(err.to_string().contains("difficulty 6 out of range"));
+    }
+
+    #[test]
+    fn test_reject_duplicate_exercise_names() {
+        let toml_str = r#"
+format_version = 1
+[[exercises]]
+name = "dup"
+dir = "a"
+module = "t"
+mode = "fix"
+language = "cpp"
+difficulty = 1
+estimated_minutes = 1
+hint_count = 1
+hint = "h"
+
+[[exercises]]
+name = "dup"
+dir = "b"
+module = "t"
+mode = "fix"
+language = "cpp"
+difficulty = 1
+estimated_minutes = 1
+hint_count = 1
+hint = "h"
+"#;
+        let f = write_temp_toml(toml_str);
+        let err = InfoFile::parse(f.path()).unwrap_err();
+        assert!(err.to_string().contains("Duplicate exercise name 'dup'"));
     }
 }

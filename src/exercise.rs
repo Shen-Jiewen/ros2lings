@@ -33,7 +33,7 @@ impl Exercise {
         }
         // Prefer the file with the done marker (the file the user needs to edit)
         for f in &files {
-            if Self::has_done_marker(f).unwrap_or(false) {
+            if Self::has_done_marker(f)? {
                 return Ok(f.clone());
             }
         }

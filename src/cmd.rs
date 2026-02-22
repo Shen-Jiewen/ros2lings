@@ -184,7 +184,7 @@ fn cmd_reset(project_root: &Path, state: &AppState, name: &str) -> Result<()> {
     // Strict reset: for each known subdir, if the solution has it, clean-copy;
     // if the solution does NOT have it but the exercise does, remove it
     // (user-created stale directory).
-    let subdirs = ["src", "launch", "urdf", "srv", "msg", "action"];
+    let subdirs = ["src", "launch", "urdf", "srv", "msg", "action", "config"];
     for subdir in &subdirs {
         let sol_sub = solutions_dir.join(subdir);
         let ex_sub = exercises_dir.join(subdir);
@@ -298,4 +298,41 @@ fn cmd_graph(state: &AppState) -> Result<()> {
     println!();
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_copy_dir_recursive() {
+        let tmp = TempDir::new().unwrap();
+        let src = tmp.path().join("src");
+        let dest = tmp.path().join("dest");
+        fs::create_dir_all(src.join("sub")).unwrap();
+        fs::write(src.join("a.txt"), "hello").unwrap();
+        fs::write(src.join("sub/b.txt"), "world").unwrap();
+
+        copy_dir_recursive(&src, &dest).unwrap();
+
+        assert_eq!(fs::read_to_string(dest.join("a.txt")).unwrap(), "hello");
+        assert_eq!(fs::read_to_string(dest.join("sub/b.txt")).unwrap(), "world");
+    }
+
+    #[test]
+    fn test_copy_dir_recursive_overwrites_existing() {
+        let tmp = TempDir::new().unwrap();
+        let src = tmp.path().join("src");
+        let dest = tmp.path().join("dest");
+        fs::create_dir_all(&src).unwrap();
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(src.join("f.txt"), "new").unwrap();
+        fs::write(dest.join("f.txt"), "old").unwrap();
+
+        copy_dir_recursive(&src, &dest).unwrap();
+
+        assert_eq!(fs::read_to_string(dest.join("f.txt")).unwrap(), "new");
+    }
 }

@@ -28,9 +28,12 @@ impl AppState {
             state.read_state()?;
         }
 
-        // Prune done entries that don't match any known exercise name
+        // Prune done and hint entries that don't match any known exercise name
         let known_names: HashSet<&str> = state.exercises.iter().map(|e| e.name.as_str()).collect();
         state.done.retain(|name| known_names.contains(name.as_str()));
+        state
+            .hint_levels
+            .retain(|name, _| known_names.contains(name.as_str()));
 
         Ok(state)
     }
@@ -307,5 +310,18 @@ mod tests {
             assert_eq!(state.current_hint_level("ex2"), 1);
             assert_eq!(state.current_hint_level("ex3"), 0);
         }
+    }
+
+    #[test]
+    fn test_stale_hint_levels_pruned() {
+        let tmp = TempDir::new().unwrap();
+        // Write a state file with hint levels for a ghost exercise
+        let state_content = "current=ex1\ndone=\nhints=ex1:2,ghost:5\n";
+        std::fs::write(tmp.path().join(".ros2lings-state.txt"), state_content).unwrap();
+
+        let state = AppState::load(tmp.path(), make_exercises()).unwrap();
+        assert_eq!(state.current_hint_level("ex1"), 2);
+        // ghost should be pruned
+        assert_eq!(state.current_hint_level("ghost"), 0);
     }
 }

@@ -1,6 +1,8 @@
 use crate::exercise::Exercise;
 use crate::ros2_env::Ros2Env;
 use anyhow::{Context, Result};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
@@ -12,15 +14,29 @@ pub enum VerifyResult {
     Success,
 }
 
+/// Single-quote a value for safe interpolation into `bash -c` commands.
+/// Replaces any embedded `'` with `'\''` (end quote, escaped quote, restart quote).
+fn shell_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "'\\''"))
+}
+
 pub struct VerifyPipeline {
     ros2_env: Ros2Env,
     project_root: PathBuf,
+    build_base: PathBuf,
+    install_base: PathBuf,
 }
 
 impl VerifyPipeline {
     pub fn new(ros2_env: Ros2Env, project_root: PathBuf) -> Self {
+        let mut hasher = DefaultHasher::new();
+        project_root.hash(&mut hasher);
+        let hash = format!("{:016x}", hasher.finish());
+        let base = PathBuf::from(format!("/tmp/ros2lings_{hash}"));
         Self {
             ros2_env,
+            build_base: base.join("build"),
+            install_base: base.join("install"),
             project_root,
         }
     }
@@ -64,20 +80,24 @@ impl VerifyPipeline {
         let interfaces_dir = self.project_root.join("exercises/ros2lings_interfaces");
         let paths = if interfaces_dir.is_dir() {
             format!(
-                "'{}' '{}'",
-                exercise_path.display(),
-                interfaces_dir.display()
+                "{} {}",
+                shell_quote(&exercise_path.display().to_string()),
+                shell_quote(&interfaces_dir.display().to_string()),
             )
         } else {
-            format!("'{}'", exercise_path.display())
+            shell_quote(&exercise_path.display().to_string())
         };
+
+        let build_base = shell_quote(&self.build_base.display().to_string());
+        let install_base = shell_quote(&self.install_base.display().to_string());
+        let pkg = shell_quote(&pkg);
 
         let shell_cmd = format!(
             "{}colcon build \
              --paths {paths} \
-             --packages-up-to '{pkg}' \
-             --build-base /tmp/ros2lings_build \
-             --install-base /tmp/ros2lings_install \
+             --packages-up-to {pkg} \
+             --build-base {build_base} \
+             --install-base {install_base} \
              --event-handlers console_direct+ \
              --cmake-args -DCMAKE_BUILD_TYPE=Debug",
             self.ros2_env.shell_prefix(),
@@ -87,16 +107,19 @@ impl VerifyPipeline {
             .args(["-c", &shell_cmd])
             .current_dir(&self.project_root)
             .output()
-            .with_context(|| format!("Failed to run colcon build for {}", pkg))
+            .with_context(|| format!("Failed to run colcon build for {}", exercise.info.package_name()))
     }
 
     fn colcon_test(&self, exercise: &Exercise) -> Result<Output> {
-        let pkg = exercise.info.package_name();
+        let pkg = shell_quote(&exercise.info.package_name());
+        let build_base = shell_quote(&self.build_base.display().to_string());
+        let install_base = shell_quote(&self.install_base.display().to_string());
+
         let shell_cmd = format!(
             "{}colcon test \
-             --packages-select '{pkg}' \
-             --build-base /tmp/ros2lings_build \
-             --install-base /tmp/ros2lings_install \
+             --packages-select {pkg} \
+             --build-base {build_base} \
+             --install-base {install_base} \
              --event-handlers console_direct+",
             self.ros2_env.shell_prefix(),
         );
@@ -105,14 +128,17 @@ impl VerifyPipeline {
             .args(["-c", &shell_cmd])
             .current_dir(&self.project_root)
             .output()
-            .with_context(|| format!("Failed to run colcon test for {}", pkg))
+            .with_context(|| format!("Failed to run colcon test for {}", exercise.info.package_name()))
     }
 
     fn colcon_test_result(&self, exercise: &Exercise) -> Result<Output> {
         let pkg = exercise.info.package_name();
+        let test_base = self.build_base.join(&pkg);
+        let test_base = shell_quote(&test_base.display().to_string());
+
         let shell_cmd = format!(
             "{}colcon test-result \
-             --test-result-base '/tmp/ros2lings_build/{pkg}'",
+             --test-result-base {test_base}",
             self.ros2_env.shell_prefix(),
         );
 
@@ -182,5 +208,38 @@ Failed   <<< ros2lings_01_hello_node
         let output = "some random output\nwith multiple lines\n";
         let formatted = format_build_error(output);
         assert!(formatted.contains("some random output"));
+    }
+
+    #[test]
+    fn test_shell_quote_simple() {
+        assert_eq!(shell_quote("hello"), "'hello'");
+    }
+
+    #[test]
+    fn test_shell_quote_with_single_quote() {
+        assert_eq!(shell_quote("it's"), "'it'\\''s'");
+    }
+
+    #[test]
+    fn test_shell_quote_with_spaces() {
+        assert_eq!(shell_quote("/path/with spaces/dir"), "'/path/with spaces/dir'");
+    }
+
+    #[test]
+    fn test_build_base_is_unique_per_project() {
+        let env = Ros2Env {
+            distro: "humble".to_string(),
+            setup_bash: PathBuf::from("/opt/ros/humble/setup.bash"),
+        };
+        let p1 = VerifyPipeline::new(env, PathBuf::from("/home/a/project1"));
+
+        let env2 = Ros2Env {
+            distro: "humble".to_string(),
+            setup_bash: PathBuf::from("/opt/ros/humble/setup.bash"),
+        };
+        let p2 = VerifyPipeline::new(env2, PathBuf::from("/home/a/project2"));
+
+        assert_ne!(p1.build_base, p2.build_base);
+        assert_ne!(p1.install_base, p2.install_base);
     }
 }
