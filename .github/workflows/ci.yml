@@ -35,7 +35,7 @@ jobs:
         run: cargo fmt -- --check
 
       - name: Clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Run tests
         run: cargo test --verbose
@@ -87,7 +87,7 @@ jobs:
             for exercise in "$module"/*/; do
               exercise_name=$(basename "$exercise")
               target="exercises/$module_name/$exercise_name"
-              for subdir in src srv action msg launch urdf; do
+              for subdir in src srv action msg launch urdf config; do
                 if [ -d "$exercise/$subdir" ]; then
                   mkdir -p "$target/$subdir"
                   cp -r "$exercise/$subdir/"* "$target/$subdir/"
