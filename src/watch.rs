@@ -169,10 +169,8 @@ fn run_watch_loop(
                 }
                 KeyCode::Char('n') => {
                     let _ = terminal::disable_raw_mode();
-                    output::print_warning(
-                        "Skipping without completing — this may leave prerequisite knowledge gaps.",
-                    );
-                    state.done_current_exercise()?;
+                    output::print_warning("Skipping — exercise will NOT be marked as completed.");
+                    state.skip_current_exercise()?;
                     show_current_exercise(state, exercises_root);
                     let _ = terminal::enable_raw_mode();
                 }

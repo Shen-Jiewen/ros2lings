@@ -16,6 +16,7 @@ install(TARGETS parameter_callback DESTINATION lib/${PROJECT_NAME})
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   ament_add_gtest(test_parameter_callback test/test_parameter_callback.cpp)
+  target_compile_definitions(test_parameter_callback PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_parameter_callback rclcpp rcl_interfaces)
 endif()
 

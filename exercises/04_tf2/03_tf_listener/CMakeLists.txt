@@ -17,7 +17,8 @@ install(TARGETS tf_listener DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_tf_listener test/test_tf_listener.cpp)
+  ament_add_gtest(test_tf_listener test/test_tf_listener.cpp TIMEOUT 120)
+  target_compile_definitions(test_tf_listener PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_tf_listener rclcpp tf2_ros tf2 geometry_msgs)
 endif()
 

@@ -79,6 +79,7 @@ private:
   std::string source_frame_ = "sensor_link";
 };
 
+#ifndef ROS2LINGS_TEST
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
@@ -87,3 +88,4 @@ int main(int argc, char * argv[])
   rclcpp::shutdown();
   return 0;
 }
+#endif

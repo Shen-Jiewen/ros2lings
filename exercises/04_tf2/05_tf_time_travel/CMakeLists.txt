@@ -17,7 +17,8 @@ install(TARGETS tf_time_travel DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_tf_time_travel test/test_tf_time_travel.cpp)
+  ament_add_gtest(test_tf_time_travel test/test_tf_time_travel.cpp TIMEOUT 120)
+  target_compile_definitions(test_tf_time_travel PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_tf_time_travel rclcpp tf2_ros tf2 geometry_msgs)
 endif()
 

@@ -6,37 +6,8 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <memory>
 
-// 在测试文件中定义正确的节点类（不含 TransformListener 以避免线程冲突）
-class TfListenerNode : public rclcpp::Node
-{
-public:
-  TfListenerNode() : Node("tf_listener_node")
-  {
-    // 正确：传入节点时钟
-    tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
-  }
-
-  std::string get_target_frame() const { return target_frame_; }
-  std::string get_source_frame() const { return source_frame_; }
-  std::shared_ptr<tf2_ros::Buffer> get_buffer() const { return tf_buffer_; }
-
-  // 测试用：模拟一次 lookupTransform，验证异常处理逻辑
-  bool try_lookup()
-  {
-    try {
-      tf_buffer_->lookupTransform(
-        target_frame_, source_frame_, tf2::TimePointZero);
-      return true;
-    } catch (const tf2::TransformException &) {
-      return false;
-    }
-  }
-
-private:
-  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
-  std::string target_frame_ = "base_link";
-  std::string source_frame_ = "sensor_link";
-};
+// Include student source directly so class definitions are visible in this translation unit
+#include "../src/tf_listener.cpp"
 
 class TfListenerTest : public ::testing::Test {
 protected:
@@ -74,17 +45,20 @@ TEST_F(TfListenerTest, SourceFrameIsSensorLink) {
 
 TEST_F(TfListenerTest, LookupTransformHandlesException) {
   auto node = std::make_shared<TfListenerNode>();
-  // lookupTransform 在没有变换数据时，try_lookup 应返回 false（捕获了异常）
-  // 不会导致节点崩溃
-  bool found = node->try_lookup();
-  EXPECT_FALSE(found) << "没有变换数据时 lookupTransform 应该失败（异常被捕获）";
+  auto buffer = node->get_buffer();
+  // Without any transforms in the buffer, lookupTransform should throw
+  // The student's timer_callback should handle this via try-catch
+  // Verify the buffer lookup throws when no data is available
+  EXPECT_THROW(
+    buffer->lookupTransform("base_link", "sensor_link", tf2::TimePointZero),
+    tf2::TransformException);
 }
 
 TEST_F(TfListenerTest, LookupTransformFrameOrder) {
   auto node = std::make_shared<TfListenerNode>();
   auto buffer = node->get_buffer();
 
-  // 手动向 buffer 中添加一个变换，用于验证查询顺序
+  // Manually inject a transform into the buffer to verify frame order
   geometry_msgs::msg::TransformStamped t;
   t.header.stamp = node->now();
   t.header.frame_id = "base_link";
@@ -95,13 +69,14 @@ TEST_F(TfListenerTest, LookupTransformFrameOrder) {
   t.transform.rotation.w = 1.0;
   buffer->setTransform(t, "test_authority", true);
 
-  // 验证正确的查询顺序: lookupTransform(target, source, time)
-  // 查询 "sensor_link 在 base_link 坐标系中的位姿"
+  // Verify correct lookup order: lookupTransform(target_frame, source_frame, time)
+  // The student should use ("base_link", "sensor_link", ...)
   try {
-    auto result = buffer->lookupTransform("base_link", "sensor_link", tf2::TimePointZero);
+    auto result = buffer->lookupTransform(
+      node->get_target_frame(), node->get_source_frame(), tf2::TimePointZero);
     EXPECT_EQ(result.header.frame_id, "base_link");
     EXPECT_EQ(result.child_frame_id, "sensor_link");
   } catch (const tf2::TransformException & ex) {
-    FAIL() << "lookupTransform 不应抛出异常: " << ex.what();
+    FAIL() << "lookupTransform should not throw with valid data: " << ex.what();
   }
 }

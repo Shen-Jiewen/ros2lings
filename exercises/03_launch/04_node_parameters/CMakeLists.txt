@@ -15,6 +15,7 @@ install(TARGETS node_parameters DESTINATION lib/${PROJECT_NAME})
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   ament_add_gtest(test_node_parameters test/test_node_parameters.cpp)
+  target_compile_definitions(test_node_parameters PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_node_parameters rclcpp)
 endif()
 

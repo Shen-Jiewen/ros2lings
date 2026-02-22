@@ -1,41 +1,13 @@
 #include <gtest/gtest.h>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <memory>
 
-// 在测试文件中定义正确的节点类
-class StaticBroadcasterNode : public rclcpp::Node
-{
-public:
-  StaticBroadcasterNode() : Node("static_broadcaster_node")
-  {
-    tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
-
-    geometry_msgs::msg::TransformStamped t;
-    t.header.stamp = this->now();
-    t.header.frame_id = "world";
-    t.child_frame_id = "base_link";
-
-    t.transform.translation.x = 1.0;
-    t.transform.translation.y = 2.0;
-    t.transform.translation.z = 0.5;
-
-    t.transform.rotation.x = 0.0;
-    t.transform.rotation.y = 0.0;
-    t.transform.rotation.z = 0.0;
-    t.transform.rotation.w = 1.0;
-
-    transform_ = t;
-    tf_broadcaster_->sendTransform(t);
-  }
-
-  geometry_msgs::msg::TransformStamped get_transform() const { return transform_; }
-
-private:
-  std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_broadcaster_;
-  geometry_msgs::msg::TransformStamped transform_;
-};
+// Include student source directly so class definitions are visible in this translation unit
+#include "../src/static_broadcaster.cpp"
 
 class StaticBroadcasterTest : public ::testing::Test {
 protected:
@@ -56,42 +28,81 @@ TEST_F(StaticBroadcasterTest, CanCreateNode) {
   ASSERT_NE(node, nullptr);
 }
 
-TEST_F(StaticBroadcasterTest, FrameIdIsWorld) {
+TEST_F(StaticBroadcasterTest, ParentFrameIsWorld) {
   auto node = std::make_shared<StaticBroadcasterNode>();
-  auto t = node->get_transform();
-  EXPECT_EQ(t.header.frame_id, "world");
+  EXPECT_EQ(node->get_parent_frame(), "world");
 }
 
-TEST_F(StaticBroadcasterTest, ChildFrameIdIsBaseLink) {
+TEST_F(StaticBroadcasterTest, ChildFrameIsBaseLink) {
   auto node = std::make_shared<StaticBroadcasterNode>();
-  auto t = node->get_transform();
-  EXPECT_EQ(t.child_frame_id, "base_link");
+  EXPECT_EQ(node->get_child_frame(), "base_link");
 }
 
-TEST_F(StaticBroadcasterTest, TranslationCorrect) {
+TEST_F(StaticBroadcasterTest, BroadcastsCorrectTransform) {
   auto node = std::make_shared<StaticBroadcasterNode>();
-  auto t = node->get_transform();
-  EXPECT_DOUBLE_EQ(t.transform.translation.x, 1.0);
-  EXPECT_DOUBLE_EQ(t.transform.translation.y, 2.0);
-  EXPECT_DOUBLE_EQ(t.transform.translation.z, 0.5);
-}
 
-TEST_F(StaticBroadcasterTest, RotationIsUnitQuaternion) {
-  auto node = std::make_shared<StaticBroadcasterNode>();
-  auto t = node->get_transform();
-  EXPECT_DOUBLE_EQ(t.transform.rotation.x, 0.0);
-  EXPECT_DOUBLE_EQ(t.transform.rotation.y, 0.0);
-  EXPECT_DOUBLE_EQ(t.transform.rotation.z, 0.0);
-  EXPECT_DOUBLE_EQ(t.transform.rotation.w, 1.0);
+  // Create a listener node with buffer to pick up the static transform
+  auto listener_node = std::make_shared<rclcpp::Node>("test_listener_node");
+  auto buffer = std::make_shared<tf2_ros::Buffer>(listener_node->get_clock());
+  auto listener = std::make_shared<tf2_ros::TransformListener>(*buffer, listener_node);
+
+  // Spin both nodes briefly so the static transform is received
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(node);
+  executor.add_node(listener_node);
+
+  auto start = std::chrono::steady_clock::now();
+  bool found = false;
+  while (std::chrono::steady_clock::now() - start < std::chrono::seconds(5)) {
+    executor.spin_some(std::chrono::milliseconds(50));
+    try {
+      auto t = buffer->lookupTransform("world", "base_link", tf2::TimePointZero);
+      // Verify translation
+      EXPECT_DOUBLE_EQ(t.transform.translation.x, 1.0);
+      EXPECT_DOUBLE_EQ(t.transform.translation.y, 2.0);
+      EXPECT_DOUBLE_EQ(t.transform.translation.z, 0.5);
+      // Verify rotation is unit quaternion
+      EXPECT_DOUBLE_EQ(t.transform.rotation.x, 0.0);
+      EXPECT_DOUBLE_EQ(t.transform.rotation.y, 0.0);
+      EXPECT_DOUBLE_EQ(t.transform.rotation.z, 0.0);
+      EXPECT_DOUBLE_EQ(t.transform.rotation.w, 1.0);
+      found = true;
+      break;
+    } catch (const tf2::TransformException &) {
+      // Transform not yet available, keep spinning
+    }
+  }
+  ASSERT_TRUE(found) << "Static transform world -> base_link was not received within timeout";
 }
 
 TEST_F(StaticBroadcasterTest, QuaternionNormIsOne) {
   auto node = std::make_shared<StaticBroadcasterNode>();
-  auto t = node->get_transform();
-  double norm = std::sqrt(
-    t.transform.rotation.x * t.transform.rotation.x +
-    t.transform.rotation.y * t.transform.rotation.y +
-    t.transform.rotation.z * t.transform.rotation.z +
-    t.transform.rotation.w * t.transform.rotation.w);
-  EXPECT_NEAR(norm, 1.0, 1e-6);
+
+  auto listener_node = std::make_shared<rclcpp::Node>("test_listener_node_quat");
+  auto buffer = std::make_shared<tf2_ros::Buffer>(listener_node->get_clock());
+  auto listener = std::make_shared<tf2_ros::TransformListener>(*buffer, listener_node);
+
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(node);
+  executor.add_node(listener_node);
+
+  auto start = std::chrono::steady_clock::now();
+  bool found = false;
+  while (std::chrono::steady_clock::now() - start < std::chrono::seconds(5)) {
+    executor.spin_some(std::chrono::milliseconds(50));
+    try {
+      auto t = buffer->lookupTransform("world", "base_link", tf2::TimePointZero);
+      double norm = std::sqrt(
+        t.transform.rotation.x * t.transform.rotation.x +
+        t.transform.rotation.y * t.transform.rotation.y +
+        t.transform.rotation.z * t.transform.rotation.z +
+        t.transform.rotation.w * t.transform.rotation.w);
+      EXPECT_NEAR(norm, 1.0, 1e-6);
+      found = true;
+      break;
+    } catch (const tf2::TransformException &) {
+      // Transform not yet available, keep spinning
+    }
+  }
+  ASSERT_TRUE(found) << "Static transform not received within timeout for quaternion norm check";
 }

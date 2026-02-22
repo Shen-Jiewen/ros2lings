@@ -46,6 +46,7 @@ private:
   std::string child_frame_ = "base_link";
 };
 
+#ifndef ROS2LINGS_TEST
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
@@ -54,3 +55,4 @@ int main(int argc, char * argv[])
   rclcpp::shutdown();
   return 0;
 }
+#endif

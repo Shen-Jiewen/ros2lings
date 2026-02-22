@@ -125,6 +125,34 @@ impl AppState {
         Ok(())
     }
 
+    /// Advance to the next exercise without marking the current one as done.
+    pub fn skip_current_exercise(&mut self) -> Result<()> {
+        // Advance to the next exercise whose dependencies are all satisfied
+        for i in 0..self.exercises.len() {
+            let idx = (self.current_index + 1 + i) % self.exercises.len();
+            if !self.done.contains(&self.exercises[idx].name)
+                && self.deps_satisfied(&self.exercises[idx])
+            {
+                self.current_index = idx;
+                self.save()?;
+                return Ok(());
+            }
+        }
+
+        // Fallback: pick any incomplete exercise (even if deps not met)
+        for i in 0..self.exercises.len() {
+            let idx = (self.current_index + 1 + i) % self.exercises.len();
+            if !self.done.contains(&self.exercises[idx].name) {
+                self.current_index = idx;
+                self.save()?;
+                return Ok(());
+            }
+        }
+
+        self.save()?;
+        Ok(())
+    }
+
     /// Check whether all depends_on entries for an exercise are in the done set.
     pub fn deps_satisfied(&self, exercise: &ExerciseInfo) -> bool {
         exercise
@@ -476,6 +504,18 @@ mod tests {
         assert!(state.deps_satisfied(&state.exercises[0]));
         // "b" depends on "a" which isn't done → not satisfied
         assert!(!state.deps_satisfied(&state.exercises[1]));
+    }
+
+    #[test]
+    fn test_skip_does_not_mark_done() {
+        let tmp = TempDir::new().unwrap();
+        let mut state = AppState::load(tmp.path(), make_exercises()).unwrap();
+        assert_eq!(state.current_exercise().name, "ex1");
+        state.skip_current_exercise().unwrap();
+        // Should advance to ex2 but NOT mark ex1 as done
+        assert_eq!(state.current_exercise().name, "ex2");
+        assert!(!state.is_done("ex1"));
+        assert_eq!(state.progress(), (0, 3));
     }
 
     #[test]

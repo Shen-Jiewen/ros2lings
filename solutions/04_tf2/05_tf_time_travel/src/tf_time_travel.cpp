@@ -27,6 +27,12 @@ public:
   // 访问函数（供测试使用）
   std::shared_ptr<tf2_ros::Buffer> get_buffer() const { return tf_buffer_; }
 
+#ifdef ROS2LINGS_TEST
+  // Test-only: track whether timer_callback successfully looked up a transform
+  bool get_lookup_succeeded() const { return lookup_succeeded_; }
+  int get_callback_count() const { return callback_count_; }
+#endif
+
 private:
   void timer_callback()
   {
@@ -47,18 +53,29 @@ private:
         t.transform.translation.x,
         t.transform.translation.y,
         t.transform.translation.z);
+#ifdef ROS2LINGS_TEST
+      lookup_succeeded_ = true;
+#endif
 
     // 正确：捕获 tf2::TransformException
     } catch (const tf2::TransformException & ex) {
       RCLCPP_WARN(this->get_logger(), "查询失败: %s", ex.what());
     }
+#ifdef ROS2LINGS_TEST
+    callback_count_++;
+#endif
   }
 
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   rclcpp::TimerBase::SharedPtr timer_;
+#ifdef ROS2LINGS_TEST
+  bool lookup_succeeded_ = false;
+  int callback_count_ = 0;
+#endif
 };
 
+#ifndef ROS2LINGS_TEST
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
@@ -67,3 +84,4 @@ int main(int argc, char * argv[])
   rclcpp::shutdown();
   return 0;
 }
+#endif

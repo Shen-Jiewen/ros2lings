@@ -69,6 +69,7 @@ private:
   std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_broadcaster_;
 };
 
+#ifndef ROS2LINGS_TEST
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
@@ -77,3 +78,4 @@ int main(int argc, char * argv[])
   rclcpp::shutdown();
   return 0;
 }
+#endif
