@@ -11,10 +11,7 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <memory>
 
-// Pull in the student's class definition (all methods are inline / in-class).
-// The student .cpp is also listed as a CMake source, but with ROS2LINGS_TEST
-// defined and main guarded out it produces no linkable symbols, so there is
-// no ODR or duplicate-symbol conflict.
+// Include student source directly so class definitions are visible in this translation unit
 #include "../src/coordinate_transform.cpp"
 
 class CoordinateTransformTest : public ::testing::Test {
