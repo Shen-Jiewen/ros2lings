@@ -4,9 +4,8 @@
 #include <chrono>
 #include <memory>
 
-// Student source is compiled together with this test via CMakeLists.txt.
-// The student's AddTwoIntsServer class is available because main() is
-// guarded by #ifndef ROS2LINGS_TEST.
+// Include student source directly so class definitions are visible in this translation unit
+#include "../src/first_service.cpp"
 
 using namespace std::chrono_literals;
 using AddTwoInts = ros2lings_interfaces::srv::AddTwoInts;

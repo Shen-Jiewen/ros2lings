@@ -5,6 +5,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include <memory>
 
+// Include student source directly so class definitions are visible in this translation unit
+#include "../src/hello_node.cpp"
+
 class HelloNodeTest : public ::testing::Test {
 protected:
   void SetUp() override {

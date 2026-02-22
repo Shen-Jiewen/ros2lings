@@ -9,9 +9,8 @@
 
 using namespace std::chrono_literals;
 
-// Forward-declare nothing: FirstPublisher is defined in the compiled source.
-// The class definition comes from src/first_publisher.cpp which is compiled
-// into this test binary with ROS2LINGS_TEST defined (main is guarded out).
+// Include student source directly so class definitions are visible in this translation unit
+#include "../src/first_publisher.cpp"
 
 class FirstPublisherTest : public ::testing::Test {
 protected:

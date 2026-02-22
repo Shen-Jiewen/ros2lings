@@ -16,7 +16,7 @@ install(TARGETS action_state_machine DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_action_state_machine test/test_action_state_machine.cpp src/action_state_machine.cpp)
+  ament_add_gtest(test_action_state_machine test/test_action_state_machine.cpp)
   target_compile_definitions(test_action_state_machine PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_action_state_machine rclcpp rclcpp_action ros2lings_interfaces)
 endif()

@@ -16,7 +16,7 @@ install(TARGETS action_client DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_action_client test/test_action_client.cpp src/action_client.cpp)
+  ament_add_gtest(test_action_client test/test_action_client.cpp)
   target_compile_definitions(test_action_client PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_action_client rclcpp rclcpp_action ros2lings_interfaces)
 endif()

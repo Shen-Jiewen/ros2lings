@@ -16,7 +16,7 @@ install(TARGETS first_action_server DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_first_action_server test/test_first_action_server.cpp src/first_action_server.cpp)
+  ament_add_gtest(test_first_action_server test/test_first_action_server.cpp)
   target_compile_definitions(test_first_action_server PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_first_action_server rclcpp rclcpp_action ros2lings_interfaces)
 endif()

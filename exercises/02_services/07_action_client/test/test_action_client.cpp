@@ -6,9 +6,8 @@
 #include <thread>
 #include <chrono>
 
-// Student source is compiled together with this test via CMakeLists.txt.
-// The student's FibonacciActionClient class is available because main()
-// is guarded by #ifndef ROS2LINGS_TEST.
+// Include student source directly so class definitions are visible in this translation unit
+#include "../src/action_client.cpp"
 
 using Fibonacci = ros2lings_interfaces::action::Fibonacci;
 using GoalHandleServer = rclcpp_action::ServerGoalHandle<Fibonacci>;

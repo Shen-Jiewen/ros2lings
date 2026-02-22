@@ -4,13 +4,8 @@
 #include <chrono>
 #include <memory>
 
-// Student source is compiled together with this test via CMakeLists.txt.
-// main() is guarded by #ifndef ROS2LINGS_TEST.
-// Compilation of the student source with -Wall -Wextra -Wpedantic is the
-// primary verification that the three bugs have been fixed:
-//   1. wait_for_service is called before sending a request
-//   2. async_send_request receives a shared_ptr, not a raw pointer
-//   3. spin_until_future_complete is used before future.get()
+// Include student source directly so class definitions are visible in this translation unit
+#include "../src/service_client.cpp"
 
 using namespace std::chrono_literals;
 using AddTwoInts = ros2lings_interfaces::srv::AddTwoInts;

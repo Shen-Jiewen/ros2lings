@@ -9,6 +9,9 @@
 
 using namespace std::chrono_literals;
 
+// Include student source directly so class definitions are visible in this translation unit
+#include "../src/component_node.cpp"
+
 class ComponentNodeTest : public ::testing::Test {
 protected:
   void SetUp() override {

@@ -15,7 +15,7 @@ install(TARGETS namespace_remap DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_namespace_remap test/test_namespace_remap.cpp src/namespace_remap.cpp)
+  ament_add_gtest(test_namespace_remap test/test_namespace_remap.cpp)
   target_compile_definitions(test_namespace_remap PRIVATE ROS2LINGS_TEST)
   ament_target_dependencies(test_namespace_remap rclcpp std_msgs)
 endif()
