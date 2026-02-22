@@ -55,23 +55,15 @@ impl Exercise {
 
     fn search_plan_for<'a>(language: &Language, dir: &Path) -> Vec<(PathBuf, &'a [&'a str])> {
         match language {
-            Language::Cpp => vec![
-                (dir.join("src"), &["cpp", "c"]),
-            ],
-            Language::C => vec![
-                (dir.join("src"), &["c"]),
-            ],
+            Language::Cpp => vec![(dir.join("src"), &["cpp", "c"])],
+            Language::C => vec![(dir.join("src"), &["c"])],
             Language::Python => vec![
                 (dir.join("src"), &["py"]),
                 (dir.join("launch"), &["py"]),
                 (dir.to_path_buf(), &["py"]),
             ],
-            Language::Urdf => vec![
-                (dir.join("urdf"), &["urdf"]),
-            ],
-            Language::Xacro => vec![
-                (dir.join("urdf"), &["xacro"]),
-            ],
+            Language::Urdf => vec![(dir.join("urdf"), &["urdf"])],
+            Language::Xacro => vec![(dir.join("urdf"), &["xacro"])],
         }
     }
 

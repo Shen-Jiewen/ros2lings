@@ -30,7 +30,9 @@ impl AppState {
 
         // Prune done and hint entries that don't match any known exercise name
         let known_names: HashSet<&str> = state.exercises.iter().map(|e| e.name.as_str()).collect();
-        state.done.retain(|name| known_names.contains(name.as_str()));
+        state
+            .done
+            .retain(|name| known_names.contains(name.as_str()));
         state
             .hint_levels
             .retain(|name, _| known_names.contains(name.as_str()));

@@ -107,7 +107,12 @@ impl VerifyPipeline {
             .args(["-c", &shell_cmd])
             .current_dir(&self.project_root)
             .output()
-            .with_context(|| format!("Failed to run colcon build for {}", exercise.info.package_name()))
+            .with_context(|| {
+                format!(
+                    "Failed to run colcon build for {}",
+                    exercise.info.package_name()
+                )
+            })
     }
 
     fn colcon_test(&self, exercise: &Exercise) -> Result<Output> {
@@ -128,7 +133,12 @@ impl VerifyPipeline {
             .args(["-c", &shell_cmd])
             .current_dir(&self.project_root)
             .output()
-            .with_context(|| format!("Failed to run colcon test for {}", exercise.info.package_name()))
+            .with_context(|| {
+                format!(
+                    "Failed to run colcon test for {}",
+                    exercise.info.package_name()
+                )
+            })
     }
 
     fn colcon_test_result(&self, exercise: &Exercise) -> Result<Output> {
@@ -222,7 +232,10 @@ Failed   <<< ros2lings_01_hello_node
 
     #[test]
     fn test_shell_quote_with_spaces() {
-        assert_eq!(shell_quote("/path/with spaces/dir"), "'/path/with spaces/dir'");
+        assert_eq!(
+            shell_quote("/path/with spaces/dir"),
+            "'/path/with spaces/dir'"
+        );
     }
 
     #[test]

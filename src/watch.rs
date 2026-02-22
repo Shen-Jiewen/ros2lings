@@ -97,7 +97,11 @@ fn run_watch_loop(
 
                 if path.starts_with(&current_dir) {
                     if let Some(ext) = path.extension() {
-                        if let Some("cpp" | "py" | "c" | "h" | "hpp" | "urdf" | "xacro" | "xml" | "yaml" | "yml" | "srv" | "msg" | "action") = ext.to_str() {
+                        if let Some(
+                            "cpp" | "py" | "c" | "h" | "hpp" | "urdf" | "xacro" | "xml" | "yaml"
+                            | "yml" | "srv" | "msg" | "action",
+                        ) = ext.to_str()
+                        {
                             // Disable raw mode for clean println output
                             let _ = terminal::disable_raw_mode();
                             println!();
