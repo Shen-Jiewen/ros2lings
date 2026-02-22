@@ -12,12 +12,14 @@ public:
   {
     // 创建 tf2 Buffer 和 TransformListener
     tf2_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+#ifndef ROS2LINGS_TEST
     tf2_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf2_buffer_);
 
     // 创建定时器，每秒尝试一次坐标变换
     timer_ = this->create_wall_timer(
       std::chrono::seconds(1),
       std::bind(&CoordinateTransformNode::timer_callback, this));
+#endif
   }
 
 private:

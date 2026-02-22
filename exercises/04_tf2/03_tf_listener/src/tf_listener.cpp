@@ -33,6 +33,7 @@ public:
     // 正确做法: tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>();
 
+#ifndef ROS2LINGS_TEST
     // 创建 TransformListener，它会自动订阅 /tf 和 /tf_static
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
@@ -42,6 +43,7 @@ public:
       std::bind(&TfListenerNode::timer_callback, this));
 
     RCLCPP_INFO(this->get_logger(), "TF 监听器已启动，等待变换数据...");
+#endif
   }
 
   // 访问函数（供测试使用）

@@ -34,6 +34,7 @@ public:
   {
     // 创建 Buffer 和 TransformListener
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+#ifndef ROS2LINGS_TEST
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
     // 创建定时器，每 500ms 查询一次变换
@@ -42,6 +43,7 @@ public:
       std::bind(&TfTimeTravelNode::timer_callback, this));
 
     RCLCPP_INFO(this->get_logger(), "TF 时间旅行节点已启动");
+#endif
   }
 
   // 访问函数（供测试使用）
