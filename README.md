@@ -4,7 +4,7 @@
 
 **Learn ROS2 by fixing broken code** — like [rustlings](https://github.com/rust-lang/rustlings), but for ROS2.
 
-ROS2lings guides you through 27 exercises that teach ROS2 core concepts. Each exercise is a broken ROS2 package with `TODO` markers showing you what to fix. A CLI tool watches your edits, rebuilds, tests, and advances you automatically.
+ROS2lings guides you through 37 exercises that teach ROS2 core concepts. Each exercise is a broken ROS2 package with `TODO` markers showing you what to fix. A CLI tool watches your edits, rebuilds, tests, and advances you automatically.
 
 ## Prerequisites
 
@@ -75,6 +75,21 @@ ros2lings reset <name>  # Reset an exercise to its original state
 | 10 | `10_action_py` | Python | Python action |
 | 11 | `11_service_introspection` | C++ | Service introspection |
 | 12 | `12_action_state_machine` | C++ | Action state management |
+
+### Module 03: Launch & Parameters (10 exercises)
+
+| # | Exercise | Language | Concepts |
+|---|----------|----------|----------|
+| 1 | `01_first_launch` | Python | Launch file basics, Node action |
+| 2 | `02_multi_node_launch` | Python | Multi-node launch |
+| 3 | `03_launch_arguments` | Python | Launch arguments, configuration |
+| 4 | `04_node_parameters` | C++ | Parameter declaration and retrieval |
+| 5 | `05_parameter_callback` | C++ | Dynamic parameter updates |
+| 6 | `06_yaml_config` | Python | YAML parameter files |
+| 7 | `07_conditional_launch` | Python | Conditional launch, GroupAction |
+| 8 | `08_parameter_py` | Python | Python parameters |
+| 9 | `09_launch_composition` | Python | Component composition via launch |
+| 10 | `10_launch_events` | Python | Event-driven launch |
 
 ## How It Works
 

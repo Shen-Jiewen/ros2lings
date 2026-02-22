@@ -60,6 +60,10 @@ jobs:
             ros-humble-rclcpp-lifecycle \
             ros-humble-rclcpp-components \
             ros-humble-std-msgs \
+            ros-humble-launch-ros \
+            ros-humble-launch-testing \
+            ros-humble-launch-testing-ament-cmake \
+            ros-humble-rcl-interfaces \
             python3-pytest
 
       - name: Overlay solutions onto exercises
@@ -85,6 +89,10 @@ jobs:
               if [ -d "$exercise/msg" ]; then
                 cp -r "$exercise/msg/"* "$target/msg/"
               fi
+              # Copy launch/ directory if present
+              if [ -d "$exercise/launch" ]; then
+                cp -r "$exercise/launch/"* "$target/launch/"
+              fi
             done
           done
 
@@ -102,7 +110,7 @@ jobs:
           source /opt/ros/humble/setup.bash
           source /tmp/ros2lings_install/setup.bash
           colcon build \
-            --paths exercises/01_nodes/* exercises/02_services/* \
+            --paths exercises/01_nodes/* exercises/02_services/* exercises/03_launch/* \
             --build-base /tmp/ros2lings_build \
             --install-base /tmp/ros2lings_install
 
