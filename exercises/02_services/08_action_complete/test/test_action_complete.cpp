@@ -10,8 +10,8 @@
 // Include student source directly so class definitions are visible in this translation unit
 #include "../src/action_complete.cpp"
 
-using Fibonacci = ros2lings_interfaces::action::Fibonacci;
-using GoalHandleFibonacci = rclcpp_action::ClientGoalHandle<Fibonacci>;
+// Fibonacci and GoalHandleFibonacci (ServerGoalHandle) already defined in the included source
+using ClientGoalHandle = rclcpp_action::ClientGoalHandle<Fibonacci>;
 using namespace std::chrono_literals;
 
 class ActionCompleteTest : public ::testing::Test {
@@ -92,7 +92,7 @@ TEST_F(ActionCompleteTest, ActionServerPublishesFeedback) {
   auto send_goal_options = rclcpp_action::Client<Fibonacci>::SendGoalOptions();
   send_goal_options.feedback_callback =
     [&mtx, &feedback_lengths](
-      GoalHandleFibonacci::SharedPtr,
+      ClientGoalHandle::SharedPtr,
       const std::shared_ptr<const Fibonacci::Feedback> feedback) {
       std::lock_guard<std::mutex> lock(mtx);
       feedback_lengths.push_back(feedback->partial_sequence.size());

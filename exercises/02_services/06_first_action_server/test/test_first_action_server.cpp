@@ -9,8 +9,7 @@
 // Include student source directly so class definitions are visible in this translation unit
 #include "../src/first_action_server.cpp"
 
-using Fibonacci = ros2lings_interfaces::action::Fibonacci;
-using GoalHandleFibonacci = rclcpp_action::ClientGoalHandle<Fibonacci>;
+// Fibonacci and GoalHandleFibonacci already defined in the included source
 using namespace std::chrono_literals;
 
 class FirstActionServerTest : public ::testing::Test {
