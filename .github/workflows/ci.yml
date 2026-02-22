@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-flight runs on new pushes to the same branch / PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   cargo-tests:
     name: Cargo Tests
@@ -26,18 +31,19 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Run tests
-        run: cargo test --verbose
+      - name: Format check
+        run: cargo fmt -- --check
 
       - name: Clippy
         run: cargo clippy -- -D warnings
 
-      - name: Format check
-        run: cargo fmt -- --check
+      - name: Run tests
+        run: cargo test --verbose
 
   ros2-tests:
     name: ROS2 Tests
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -60,6 +66,7 @@ jobs:
             ros-humble-rclcpp-lifecycle \
             ros-humble-rclcpp-components \
             ros-humble-std-msgs \
+            ros-humble-launch \
             ros-humble-launch-ros \
             ros-humble-launch-testing \
             ros-humble-launch-testing-ament-cmake \
@@ -68,6 +75,9 @@ jobs:
             ros-humble-tf2-ros \
             ros-humble-tf2-geometry-msgs \
             ros-humble-geometry-msgs \
+            ros-humble-xacro \
+            ros-humble-robot-state-publisher \
+            ros-humble-joint-state-publisher \
             python3-pytest
 
       - name: Overlay solutions onto exercises
@@ -77,30 +87,12 @@ jobs:
             for exercise in "$module"/*/; do
               exercise_name=$(basename "$exercise")
               target="exercises/$module_name/$exercise_name"
-              # Copy src/ directory
-              if [ -d "$exercise/src" ]; then
-                cp -r "$exercise/src/"* "$target/src/"
-              fi
-              # Copy srv/ directory if present
-              if [ -d "$exercise/srv" ]; then
-                cp -r "$exercise/srv/"* "$target/srv/"
-              fi
-              # Copy action/ directory if present
-              if [ -d "$exercise/action" ]; then
-                cp -r "$exercise/action/"* "$target/action/"
-              fi
-              # Copy msg/ directory if present
-              if [ -d "$exercise/msg" ]; then
-                cp -r "$exercise/msg/"* "$target/msg/"
-              fi
-              # Copy launch/ directory if present
-              if [ -d "$exercise/launch" ]; then
-                cp -r "$exercise/launch/"* "$target/launch/"
-              fi
-              # Copy urdf/ directory if present
-              if [ -d "$exercise/urdf" ]; then
-                cp -r "$exercise/urdf/"* "$target/urdf/"
-              fi
+              for subdir in src srv action msg launch urdf; do
+                if [ -d "$exercise/$subdir" ]; then
+                  mkdir -p "$target/$subdir"
+                  cp -r "$exercise/$subdir/"* "$target/$subdir/"
+                fi
+              done
             done
           done
 
@@ -111,7 +103,8 @@ jobs:
             --paths exercises/ros2lings_interfaces \
             --packages-select ros2lings_interfaces \
             --build-base /tmp/ros2lings_build \
-            --install-base /tmp/ros2lings_install
+            --install-base /tmp/ros2lings_install \
+            --event-handlers console_direct+
 
       - name: Build all exercise packages
         run: |
@@ -120,7 +113,8 @@ jobs:
           colcon build \
             --paths exercises/01_nodes/* exercises/02_services/* exercises/03_launch/* exercises/04_tf2/* exercises/05_urdf/* \
             --build-base /tmp/ros2lings_build \
-            --install-base /tmp/ros2lings_install
+            --install-base /tmp/ros2lings_install \
+            --event-handlers console_direct+
 
       - name: Run tests
         run: |
@@ -130,6 +124,7 @@ jobs:
             --build-base /tmp/ros2lings_build \
             --install-base /tmp/ros2lings_install \
             --test-result-base /tmp/ros2lings_test_results \
+            --event-handlers console_direct+ \
             --return-code-on-test-failure
 
       - name: Show test results
@@ -139,3 +134,11 @@ jobs:
           colcon test-result \
             --test-result-base /tmp/ros2lings_test_results \
             --verbose
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ros2-test-results
+          path: /tmp/ros2lings_test_results
+          retention-days: 7
