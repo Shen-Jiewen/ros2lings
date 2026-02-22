@@ -1,0 +1,71 @@
+<!-- I AM NOT DONE -->
+<!--
+  练习: visual_geometry
+  模块: 05 - URDF 与机器人建模
+  难度: ★★☆☆☆
+
+  学习目标:
+    掌握 URDF 中三种基本几何体（box、cylinder、sphere）的使用方法，
+    以及如何通过 material 元素为 link 设置颜色。
+
+  说明:
+    下面的 URDF 定义了一个名为 "color_bot" 的简单机器人，包含 3 个 link：
+      - base_link（底座）：蓝色的长方体
+      - body（躯干）：绿色的圆柱体
+      - head（头部）：红色的球体
+
+    以及 2 个 fixed joint 将它们连接起来。
+
+    机器人的结构已经搭好，但每个 link 的 visual 元素中缺少
+    geometry（几何体）和 material（材质）的定义。请根据 TODO 提示补全。
+
+  步骤:
+    1. 为 base_link 添加 box 几何体和蓝色材质
+    2. 为 body 添加 cylinder 几何体和绿色材质
+    3. 为 head 添加 sphere 几何体和红色材质
+    4. 完成后，删除文件顶部的 "I AM NOT DONE" 注释
+-->
+
+<robot name="color_bot">
+
+  <!-- 底座 link -->
+  <link name="base_link">
+    <visual>
+      <!-- TODO 1: 添加 geometry 元素，使用 box，size="1.0 0.5 0.1" -->
+      <!-- TODO 2: 添加 material 元素，name="blue"，内含 color rgba="0 0 1 1" -->
+    </visual>
+  </link>
+
+  <!-- 躯干 link -->
+  <link name="body">
+    <visual>
+      <origin xyz="0 0 0.3" rpy="0 0 0"/>
+      <!-- TODO 3: 添加 geometry 元素，使用 cylinder，radius="0.2" length="0.6" -->
+      <!-- TODO 4: 添加 material 元素，name="green"，内含 color rgba="0 1 0 1" -->
+    </visual>
+  </link>
+
+  <!-- 头部 link -->
+  <link name="head">
+    <visual>
+      <origin xyz="0 0 0.075" rpy="0 0 0"/>
+      <!-- TODO 5: 添加 geometry 元素，使用 sphere，radius="0.15" -->
+      <!-- TODO 6: 添加 material 元素，name="red"，内含 color rgba="1 0 0 1" -->
+    </visual>
+  </link>
+
+  <!-- 底座到躯干的固定关节 -->
+  <joint name="base_to_body" type="fixed">
+    <parent link="base_link"/>
+    <child link="body"/>
+    <origin xyz="0 0 0.05" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 躯干到头部的固定关节 -->
+  <joint name="body_to_head" type="fixed">
+    <parent link="body"/>
+    <child link="head"/>
+    <origin xyz="0 0 0.6" rpy="0 0 0"/>
+  </joint>
+
+</robot>
