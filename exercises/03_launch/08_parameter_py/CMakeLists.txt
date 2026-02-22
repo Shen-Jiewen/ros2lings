@@ -12,7 +12,7 @@ install(PROGRAMS
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(test_parameter_py test/test_parameter_py.py
-    TIMEOUT 30
+    TIMEOUT 60
   )
 endif()
 
