@@ -9,7 +9,7 @@
 
 using namespace std::chrono_literals;
 
-// 在测试文件中定义正确的节点类
+// 在测试文件中定义正确的节点类（不含 TransformListener 以避免线程冲突）
 // 注意：为了可测试性，将查询参数提取为成员变量
 class TfTimeTravelNode : public rclcpp::Node
 {
@@ -17,17 +17,12 @@ public:
   TfTimeTravelNode() : Node("tf_time_travel_node")
   {
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
-    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
     // 正确：使用 TimePointZero 获取最新可用变换
     query_time_ = tf2::TimePointZero;
 
     // 正确：设置合理的超时时间
     timeout_ = rclcpp::Duration::from_seconds(1.0);
-
-    timer_ = this->create_wall_timer(
-      500ms,
-      std::bind(&TfTimeTravelNode::timer_callback, this));
   }
 
   std::shared_ptr<tf2_ros::Buffer> get_buffer() const { return tf_buffer_; }
@@ -44,7 +39,6 @@ public:
     callback_executed_ = true;
     try {
       geometry_msgs::msg::TransformStamped t;
-      // 测试中使用短超时，避免长时间阻塞
       t = tf_buffer_->lookupTransform(
         "world", "robot",
         query_time_,
@@ -55,34 +49,7 @@ public:
   }
 
 private:
-  void timer_callback()
-  {
-    callback_executed_ = true;
-
-    try {
-      geometry_msgs::msg::TransformStamped t;
-      t = tf_buffer_->lookupTransform(
-        "world",
-        "robot",
-        query_time_,
-        timeout_.to_chrono<std::chrono::nanoseconds>());
-
-      RCLCPP_INFO(this->get_logger(),
-        "变换 world -> robot: [%.2f, %.2f, %.2f]",
-        t.transform.translation.x,
-        t.transform.translation.y,
-        t.transform.translation.z);
-
-    // 正确：捕获 tf2::TransformException
-    } catch (const tf2::TransformException & ex) {
-      caught_tf_exception_ = true;
-      RCLCPP_WARN(this->get_logger(), "查询失败: %s", ex.what());
-    }
-  }
-
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
-  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-  rclcpp::TimerBase::SharedPtr timer_;
 
   tf2::TimePoint query_time_ = tf2::TimePointZero;
   rclcpp::Duration timeout_ = rclcpp::Duration::from_seconds(1.0);

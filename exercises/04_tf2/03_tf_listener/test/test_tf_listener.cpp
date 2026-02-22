@@ -6,7 +6,7 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <memory>
 
-// 在测试文件中定义正确的节点类
+// 在测试文件中定义正确的节点类（不含 TransformListener 以避免线程冲突）
 class TfListenerNode : public rclcpp::Node
 {
 public:
@@ -14,43 +14,26 @@ public:
   {
     // 正确：传入节点时钟
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
-
-    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
-
-    timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(500),
-      std::bind(&TfListenerNode::timer_callback, this));
   }
 
   std::string get_target_frame() const { return target_frame_; }
   std::string get_source_frame() const { return source_frame_; }
   std::shared_ptr<tf2_ros::Buffer> get_buffer() const { return tf_buffer_; }
 
-private:
-  void timer_callback()
+  // 测试用：模拟一次 lookupTransform，验证异常处理逻辑
+  bool try_lookup()
   {
-    // 正确的参数顺序和异常处理
     try {
-      geometry_msgs::msg::TransformStamped t;
-      t = tf_buffer_->lookupTransform(
-        target_frame_,   // 目标帧: "base_link"
-        source_frame_,   // 源帧: "sensor_link"
-        tf2::TimePointZero);
-
-      RCLCPP_INFO(this->get_logger(),
-        "变换 base_link -> sensor_link: [%.2f, %.2f, %.2f]",
-        t.transform.translation.x,
-        t.transform.translation.y,
-        t.transform.translation.z);
-    } catch (const tf2::TransformException & ex) {
-      RCLCPP_WARN(this->get_logger(), "无法获取变换: %s", ex.what());
+      tf_buffer_->lookupTransform(
+        target_frame_, source_frame_, tf2::TimePointZero);
+      return true;
+    } catch (const tf2::TransformException &) {
+      return false;
     }
   }
 
+private:
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
-  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-  rclcpp::TimerBase::SharedPtr timer_;
-
   std::string target_frame_ = "base_link";
   std::string source_frame_ = "sensor_link";
 };
@@ -91,16 +74,10 @@ TEST_F(TfListenerTest, SourceFrameIsSensorLink) {
 
 TEST_F(TfListenerTest, LookupTransformHandlesException) {
   auto node = std::make_shared<TfListenerNode>();
-  // lookupTransform 在没有变换数据时应该抛出异常
-  // 正确的实现会用 try-catch 处理，不会导致节点崩溃
-  // 这里通过 spin_some 触发定时器回调来验证节点不会崩溃
-  auto start = std::chrono::steady_clock::now();
-  while (std::chrono::steady_clock::now() - start < std::chrono::milliseconds(1500)) {
-    rclcpp::spin_some(node);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
-  // 如果执行到这里没有崩溃，说明异常处理是正确的
-  SUCCEED();
+  // lookupTransform 在没有变换数据时，try_lookup 应返回 false（捕获了异常）
+  // 不会导致节点崩溃
+  bool found = node->try_lookup();
+  EXPECT_FALSE(found) << "没有变换数据时 lookupTransform 应该失败（异常被捕获）";
 }
 
 TEST_F(TfListenerTest, LookupTransformFrameOrder) {
