@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ros2lings_49_links_and_joints</name>
+  <version>0.1.0</version>
+  <description>ROS2lings 练习: links_and_joints — 多 link 与 joint 的 URDF 机器人</description>
+  <maintainer email="ros2lings@example.com">ros2lings</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

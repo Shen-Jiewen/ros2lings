@@ -1,0 +1,86 @@
+<!-- I AM NOT DONE -->
+<!--
+  练习: links_and_joints
+  模块: 05 - URDF 与机器人建模
+  难度: ★★☆☆☆
+
+  学习目标:
+    理解如何使用 link 和 joint 构建多部件的机器人模型，
+    掌握 revolute（旋转）和 fixed（固定）两种常见关节类型。
+
+  说明:
+    下面的 URDF 文件定义了一个简单的机械臂，包含 3 个 link：
+      - base_link（基座）
+      - upper_arm（上臂）
+      - lower_arm（下臂）
+    以及 2 个 joint：
+      - base_to_upper（revolute 旋转关节）
+      - upper_to_lower（fixed 固定关节）
+
+    但是文件中有 3 个错误需要你修复。
+
+  步骤:
+    1. 修复 joint 的 type 属性拼写
+    2. 修复 joint 中 parent/child link 的名称，使其与已定义的 link 匹配
+    3. 为 revolute 类型的 joint 添加缺失的 <axis> 和 <limit> 元素
+    4. 修复完成后，删除文件顶部的 "I AM NOT DONE" 注释
+-->
+
+<robot name="simple_arm">
+
+  <!-- 基座 link -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.1" length="0.05"/>
+      </geometry>
+      <material name="grey">
+        <color rgba="0.5 0.5 0.5 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- 上臂 link -->
+  <link name="upper_arm">
+    <visual>
+      <origin xyz="0 0 0.25" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.05 0.5"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.0 0.0 0.8 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- 下臂 link -->
+  <link name="lower_arm">
+    <visual>
+      <origin xyz="0 0 0.15" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 0.3"/>
+      </geometry>
+      <material name="red">
+        <color rgba="0.8 0.0 0.0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- BUG 1: joint type 拼写错误 "revolut" → 应为 "revolute" -->
+  <!-- BUG 3: revolute joint 缺少 <axis> 和 <limit> 元素 -->
+  <joint name="base_to_upper" type="revolut">
+    <parent link="base_link"/>
+    <child link="upper_arm"/>
+    <origin xyz="0 0 0.025" rpy="0 0 0"/>
+    <!-- 缺少 <axis> 元素，revolute joint 必须指定旋转轴 -->
+    <!-- 缺少 <limit> 元素，revolute joint 必须指定运动范围 -->
+  </joint>
+
+  <!-- BUG 2: parent link 名称错误 "upper" → 应为 "upper_arm" -->
+  <joint name="upper_to_lower" type="fixed">
+    <parent link="upper"/>
+    <child link="lower_arm"/>
+    <origin xyz="0 0 0.5" rpy="0 0 0"/>
+  </joint>
+
+</robot>

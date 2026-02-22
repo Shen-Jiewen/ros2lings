@@ -1,0 +1,37 @@
+<!-- I AM NOT DONE -->
+<!--
+  练习: first_urdf
+  模块: 05 - URDF 与机器人建模
+  难度: ★☆☆☆☆
+
+  学习目标:
+    理解 URDF（Unified Robot Description Format）的基本结构，
+    掌握如何定义一个包含单个 link 的最简机器人模型。
+
+  说明:
+    下面的 URDF 文件试图定义一个名为 "my_robot" 的简单机器人，
+    它只有一个名为 "base_link" 的 link，并带有一个长方体形状的
+    visual 元素。但是文件中有 3 个错误需要你修复。
+
+  步骤:
+    1. 给 <robot> 标签添加 name 属性
+    2. 修复 <link> 标签的 name 属性，使其为 "base_link"
+    3. 修复 <box> 的 size 属性，使其包含 3 个维度值
+    4. 修复完成后，删除文件顶部的 "I AM NOT DONE" 注释
+-->
+
+<!-- BUG 1: <robot> 标签缺少 name 属性，应为 name="my_robot" -->
+<robot>
+  <!-- BUG 2: link 的 name 属性为空，应为 "base_link" -->
+  <link name="">
+    <visual>
+      <geometry>
+        <!-- BUG 3: box 的 size 应有 3 个值（长 宽 高），如 "1.0 0.5 0.5" -->
+        <box size="1.0"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.0 0.0 0.8 1.0"/>
+      </material>
+    </visual>
+  </link>
+</robot>
