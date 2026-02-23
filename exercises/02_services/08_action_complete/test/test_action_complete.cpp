@@ -77,7 +77,9 @@ TEST_F(ActionCompleteTest, ActionServerPublishesFeedback) {
   auto client_node = std::make_shared<rclcpp::Node>("test_feedback_client");
   auto client = rclcpp_action::create_client<Fibonacci>(client_node, "fibonacci");
 
-  rclcpp::executors::SingleThreadedExecutor executor;
+  // Use MultiThreadedExecutor so feedback callbacks are processed
+  // concurrently with goal/result handling.
+  rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(server_node);
   executor.add_node(client_node);
 
