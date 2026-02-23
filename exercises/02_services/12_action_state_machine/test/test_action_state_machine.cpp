@@ -81,7 +81,9 @@ TEST_F(ActionStateMachineTest, CancelIsAccepted) {
   auto client_node = std::make_shared<rclcpp::Node>("test_cancel_client");
   auto client = rclcpp_action::create_client<Fibonacci>(client_node, "fibonacci");
 
-  rclcpp::executors::SingleThreadedExecutor executor;
+  // Use MultiThreadedExecutor so feedback processing doesn't block
+  // goal acceptance and cancel handling.
+  rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(server_node);
   executor.add_node(client_node);
 
@@ -89,10 +91,10 @@ TEST_F(ActionStateMachineTest, CancelIsAccepted) {
 
   // Send a goal with a large order to give time to cancel
   auto goal_msg = Fibonacci::Goal();
-  goal_msg.order = 1000000;
+  goal_msg.order = 100000;
 
   auto send_goal_future = client->async_send_goal(goal_msg);
-  auto goal_status = executor.spin_until_future_complete(send_goal_future, 5s);
+  auto goal_status = executor.spin_until_future_complete(send_goal_future, 10s);
   ASSERT_EQ(goal_status, rclcpp::FutureReturnCode::SUCCESS);
 
   auto goal_handle = send_goal_future.get();
@@ -100,7 +102,7 @@ TEST_F(ActionStateMachineTest, CancelIsAccepted) {
 
   // Request cancellation
   auto cancel_future = client->async_cancel_goal(goal_handle);
-  auto cancel_status = executor.spin_until_future_complete(cancel_future, 5s);
+  auto cancel_status = executor.spin_until_future_complete(cancel_future, 10s);
   ASSERT_EQ(cancel_status, rclcpp::FutureReturnCode::SUCCESS);
 
   auto cancel_response = cancel_future.get();
