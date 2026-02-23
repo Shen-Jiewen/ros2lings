@@ -3,10 +3,12 @@
 #include <ros2lings_19_custom_srv/srv/compute_area.hpp>
 #include <chrono>
 #include <memory>
-#include <cmath>
 
+// Include student source directly so class definitions are visible in this translation unit
+#include "../src/custom_srv.cpp"
+
+// ComputeArea alias comes from the included student source
 using namespace std::chrono_literals;
-using ComputeArea = ros2lings_19_custom_srv::srv::ComputeArea;
 
 class CustomSrvTest : public ::testing::Test {
 protected:
@@ -22,59 +24,47 @@ protected:
   }
 };
 
-TEST_F(CustomSrvTest, RequestFieldsExist) {
-  auto request = std::make_shared<ComputeArea::Request>();
-  request->width = 5.0;
-  request->height = 3.0;
-  EXPECT_DOUBLE_EQ(request->width, 5.0);
-  EXPECT_DOUBLE_EQ(request->height, 3.0);
-}
-
-TEST_F(CustomSrvTest, ResponseFieldExists) {
-  auto response = std::make_shared<ComputeArea::Response>();
-  response->area = 15.0;
-  EXPECT_DOUBLE_EQ(response->area, 15.0);
+TEST_F(CustomSrvTest, CanCreateServer) {
+  auto server = std::make_shared<AreaServer>();
+  ASSERT_NE(server, nullptr);
+  EXPECT_EQ(std::string(server->get_name()), "area_server");
 }
 
 TEST_F(CustomSrvTest, ServiceComputesCorrectArea) {
-  auto node = std::make_shared<rclcpp::Node>("test_area_node");
+  auto server_node = std::make_shared<AreaServer>();
+  auto client_node = std::make_shared<rclcpp::Node>("test_area_client");
 
-  // 创建服务器
-  auto service = node->create_service<ComputeArea>(
-    "compute_area",
-    [](const std::shared_ptr<ComputeArea::Request> request,
-       std::shared_ptr<ComputeArea::Response> response) {
-      response->area = request->width * request->height;
-    });
+  auto client = client_node->create_client<ComputeArea>("compute_area");
 
-  // 创建客户端
-  auto client = node->create_client<ComputeArea>("compute_area");
-  ASSERT_TRUE(client->wait_for_service(2s));
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(server_node);
+  executor.add_node(client_node);
 
-  // 测试正常计算
+  ASSERT_TRUE(client->wait_for_service(2s))
+    << "Student's 'compute_area' service should be available";
+
   auto request = std::make_shared<ComputeArea::Request>();
   request->width = 3.5;
   request->height = 4.2;
   auto future = client->async_send_request(request);
 
-  auto status = rclcpp::spin_until_future_complete(node, future, 2s);
+  auto status = executor.spin_until_future_complete(future, 5s);
   ASSERT_EQ(status, rclcpp::FutureReturnCode::SUCCESS);
 
   auto response = future.get();
-  EXPECT_NEAR(response->area, 14.7, 0.001) << "3.5 * 4.2 应当约等于 14.7";
+  EXPECT_NEAR(response->area, 14.7, 0.001) << "3.5 * 4.2 should be approximately 14.7";
 }
 
 TEST_F(CustomSrvTest, ServiceHandlesZero) {
-  auto node = std::make_shared<rclcpp::Node>("test_area_zero");
+  auto server_node = std::make_shared<AreaServer>();
+  auto client_node = std::make_shared<rclcpp::Node>("test_area_zero_client");
 
-  auto service = node->create_service<ComputeArea>(
-    "compute_area_zero",
-    [](const std::shared_ptr<ComputeArea::Request> request,
-       std::shared_ptr<ComputeArea::Response> response) {
-      response->area = request->width * request->height;
-    });
+  auto client = client_node->create_client<ComputeArea>("compute_area");
 
-  auto client = node->create_client<ComputeArea>("compute_area_zero");
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(server_node);
+  executor.add_node(client_node);
+
   ASSERT_TRUE(client->wait_for_service(2s));
 
   auto request = std::make_shared<ComputeArea::Request>();
@@ -82,9 +72,9 @@ TEST_F(CustomSrvTest, ServiceHandlesZero) {
   request->height = 10.0;
   auto future = client->async_send_request(request);
 
-  auto status = rclcpp::spin_until_future_complete(node, future, 2s);
+  auto status = executor.spin_until_future_complete(future, 5s);
   ASSERT_EQ(status, rclcpp::FutureReturnCode::SUCCESS);
 
   auto response = future.get();
-  EXPECT_DOUBLE_EQ(response->area, 0.0) << "宽为 0 时面积应为 0";
+  EXPECT_DOUBLE_EQ(response->area, 0.0) << "Area should be 0 when width is 0";
 }

@@ -4,6 +4,9 @@
 #include <chrono>
 #include <memory>
 
+// Include student source directly so class definitions are visible in this translation unit
+#include "../src/custom_message.cpp"
+
 using namespace std::chrono_literals;
 using SensorData = ros2lings_05_custom_message::msg::SensorData;
 
@@ -21,6 +24,33 @@ protected:
   }
 };
 
+TEST_F(CustomMessageTest, CanCreateNode) {
+  auto node = std::make_shared<CustomMessageNode>();
+  ASSERT_NE(node, nullptr);
+  EXPECT_EQ(std::string(node->get_name()), "custom_message_node");
+}
+
+TEST_F(CustomMessageTest, NodePublishesAndReceives) {
+  auto node = std::make_shared<CustomMessageNode>();
+
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(node);
+
+  // Spin for enough time for the timer (200ms) to fire and message to be received
+  auto start = std::chrono::steady_clock::now();
+  while ((std::chrono::steady_clock::now() - start) < 1s) {
+    executor.spin_some(50ms);
+    if (!node->get_last_sensor_id().empty()) {
+      break;
+    }
+  }
+
+  EXPECT_EQ(node->get_last_sensor_id(), "sensor_01")
+    << "Node should publish and receive SensorData with sensor_id='sensor_01'";
+  EXPECT_DOUBLE_EQ(node->get_last_temperature(), 25.5)
+    << "Node should receive temperature=25.5";
+}
+
 TEST_F(CustomMessageTest, CanCreateCustomMessage) {
   auto msg = SensorData();
   msg.temperature = 25.5;
@@ -30,48 +60,4 @@ TEST_F(CustomMessageTest, CanCreateCustomMessage) {
   EXPECT_DOUBLE_EQ(msg.temperature, 25.5);
   EXPECT_DOUBLE_EQ(msg.humidity, 60.0);
   EXPECT_EQ(msg.sensor_id, "sensor_01");
-}
-
-TEST_F(CustomMessageTest, CanPublishCustomMessage) {
-  auto node = std::make_shared<rclcpp::Node>("test_custom_pub");
-  auto pub = node->create_publisher<SensorData>("sensor_data", 10);
-  ASSERT_NE(pub, nullptr);
-
-  auto msg = SensorData();
-  msg.temperature = 25.5;
-  msg.humidity = 60.0;
-  msg.sensor_id = "sensor_01";
-  pub->publish(msg);
-  SUCCEED();
-}
-
-TEST_F(CustomMessageTest, CanSubscribeCustomMessage) {
-  auto pub_node = std::make_shared<rclcpp::Node>("test_custom_pub2");
-  auto sub_node = std::make_shared<rclcpp::Node>("test_custom_sub");
-
-  auto pub = pub_node->create_publisher<SensorData>("sensor_data", 10);
-
-  std::string received_id;
-  double received_temp = 0.0;
-  auto sub = sub_node->create_subscription<SensorData>(
-    "sensor_data", 10,
-    [&received_id, &received_temp](const SensorData::SharedPtr msg) {
-      received_id = msg->sensor_id;
-      received_temp = msg->temperature;
-    });
-
-  auto msg = SensorData();
-  msg.temperature = 25.5;
-  msg.humidity = 60.0;
-  msg.sensor_id = "sensor_01";
-  pub->publish(msg);
-
-  auto start = std::chrono::steady_clock::now();
-  while (received_id.empty() && (std::chrono::steady_clock::now() - start) < 2s) {
-    rclcpp::spin_some(sub_node);
-    std::this_thread::sleep_for(10ms);
-  }
-
-  EXPECT_EQ(received_id, "sensor_01") << "应当收到自定义消息并读取 sensor_id 字段";
-  EXPECT_DOUBLE_EQ(received_temp, 25.5) << "应当收到自定义消息并读取 temperature 字段";
 }

@@ -183,25 +183,58 @@ fn cmd_reset(project_root: &Path, state: &AppState, name: &str) -> Result<()> {
         );
     }
 
-    // Strict reset: for each known subdir, if the solution has it, clean-copy;
-    // if the solution does NOT have it but the exercise does, remove it
-    // (user-created stale directory).
-    let subdirs = ["src", "launch", "urdf", "srv", "msg", "action", "config"];
-    for subdir in &subdirs {
-        let sol_sub = solutions_dir.join(subdir);
-        let ex_sub = exercises_dir.join(subdir);
-        if sol_sub.is_dir() {
-            // Solution has this subdir — clean-copy it
+    // Phase 1: Copy all solution content (files and directories) to the exercise.
+    let mut solution_dirs: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for entry in std::fs::read_dir(&solutions_dir)
+        .with_context(|| format!("Failed to read {}", solutions_dir.display()))?
+    {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dest_path = exercises_dir.join(entry.file_name());
+
+        if src_path.is_dir() {
+            let dir_name = entry.file_name().to_string_lossy().to_string();
+            solution_dirs.insert(dir_name);
+            if dest_path.is_dir() {
+                std::fs::remove_dir_all(&dest_path)
+                    .with_context(|| format!("Failed to clean {}", dest_path.display()))?;
+            }
+            copy_dir_recursive(&src_path, &dest_path)?;
+        } else {
+            std::fs::copy(&src_path, &dest_path)
+                .with_context(|| format!("Failed to reset {}", dest_path.display()))?;
+        }
+    }
+
+    // Phase 2: Remove orphan content-subdirs that exist in exercise but not in solution.
+    let content_subdirs = ["src", "launch", "urdf", "srv", "msg", "action", "config"];
+    for subdir in &content_subdirs {
+        if !solution_dirs.contains(*subdir) {
+            let ex_sub = exercises_dir.join(subdir);
             if ex_sub.is_dir() {
                 std::fs::remove_dir_all(&ex_sub)
-                    .with_context(|| format!("Failed to clean {}", ex_sub.display()))?;
+                    .with_context(|| format!("Failed to remove orphan {}", ex_sub.display()))?;
             }
-            copy_dir_recursive(&sol_sub, &ex_sub)?;
-        } else if ex_sub.is_dir() {
-            // Solution doesn't have this subdir but exercise does — remove orphan
-            std::fs::remove_dir_all(&ex_sub)
-                .with_context(|| format!("Failed to remove orphan {}", ex_sub.display()))?;
         }
+    }
+
+    // Phase 3: Restore exercise-only files (CMakeLists.txt, package.xml, test/)
+    // from git. These aren't in solutions/ so we use git checkout.
+    let exercise_rel = Path::new("exercises").join(&info.dir);
+    let restore_targets: Vec<String> = ["CMakeLists.txt", "package.xml", "test"]
+        .iter()
+        .map(|f| exercise_rel.join(f).to_string_lossy().into_owned())
+        .filter(|p| project_root.join(p).exists())
+        .collect();
+
+    if !restore_targets.is_empty() {
+        let mut cmd = std::process::Command::new("git");
+        cmd.arg("checkout").arg("HEAD").arg("--");
+        for target in &restore_targets {
+            cmd.arg(target);
+        }
+        cmd.current_dir(project_root);
+        let _ = cmd.status(); // Best-effort; ignore if git is unavailable
     }
 
     output::print_success(&format!("Exercise '{}' has been reset.", name));
