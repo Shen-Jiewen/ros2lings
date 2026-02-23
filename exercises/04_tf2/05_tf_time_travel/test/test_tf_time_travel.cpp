@@ -43,7 +43,12 @@ TEST_F(TfTimeTravelTest, TimerCallbackSucceedsWithTransformData) {
   auto node = std::make_shared<TfTimeTravelNode>();
   auto buffer = node->get_buffer();
 
-  // Inject a transform at the current time
+  // Inject a NON-STATIC transform at the current time.
+  // Using false (non-static) is critical: static transforms are available at
+  // ALL times (including future), which would let the buggy code
+  // (lookupTransform at now+10s) succeed.  Non-static transforms are only
+  // valid around their stamped time, so querying at a future timestamp will
+  // throw ExtrapolationException — exactly what we need to detect Bug 1.
   geometry_msgs::msg::TransformStamped t;
   t.header.stamp = node->now();
   t.header.frame_id = "world";
@@ -52,7 +57,7 @@ TEST_F(TfTimeTravelTest, TimerCallbackSucceedsWithTransformData) {
   t.transform.translation.y = 2.0;
   t.transform.translation.z = 3.0;
   t.transform.rotation.w = 1.0;
-  buffer->setTransform(t, "test_authority", true);
+  buffer->setTransform(t, "test_authority", false);
 
   // Spin the node so the timer (500ms) fires at least once
   rclcpp::executors::SingleThreadedExecutor executor;

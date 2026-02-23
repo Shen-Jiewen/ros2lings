@@ -194,11 +194,21 @@ fn cmd_reset(project_root: &Path, state: &AppState, name: &str) -> Result<()> {
     }
 
     // Phase 2: Remove untracked files (student-created files, build artifacts).
-    let _ = std::process::Command::new("git")
+    match std::process::Command::new("git")
         .args(["clean", "-fd", "--"])
         .arg(exercise_rel.to_string_lossy().as_ref())
         .current_dir(project_root)
-        .status();
+        .output()
+    {
+        Ok(output) if !output.status.success() => {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            output::print_warning(&format!("git clean failed: {}", stderr.trim()));
+        }
+        Err(e) => {
+            output::print_warning(&format!("Failed to run git clean: {}", e));
+        }
+        _ => {}
+    }
 
     output::print_success(&format!("Exercise '{}' has been reset.", name));
     Ok(())
