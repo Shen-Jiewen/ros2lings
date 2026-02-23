@@ -172,62 +172,39 @@ fn cmd_reset(project_root: &Path, state: &AppState, name: &str) -> Result<()> {
         .with_context(|| format!("Exercise '{}' not found", name))?;
     let info = &state.exercises[idx];
 
-    let exercises_dir = project_root.join("exercises").join(&info.dir);
-    let solutions_dir = project_root.join("solutions").join(&info.dir);
+    let exercise_rel = Path::new("exercises").join(&info.dir);
 
-    if !solutions_dir.exists() {
-        anyhow::bail!(
-            "Solution not found for '{}' at {}",
-            name,
-            solutions_dir.display()
-        );
+    // Phase 1: Restore all tracked files to their original (committed) state.
+    // This reverts the student's changes so they can start the exercise fresh.
+    let checkout = std::process::Command::new("git")
+        .args(["checkout", "HEAD", "--"])
+        .arg(exercise_rel.to_string_lossy().as_ref())
+        .current_dir(project_root)
+        .output();
+
+    match checkout {
+        Ok(output) if output.status.success() => {}
+        Ok(output) => {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("git checkout failed: {}", stderr.trim());
+        }
+        Err(e) => {
+            anyhow::bail!("Failed to run git (is it installed?): {}", e);
+        }
     }
 
-    // Phase 1: Restore the entire exercise directory from git.
-    // This recovers ALL files — CMakeLists.txt, package.xml, test/, msg/,
-    // action/, config/, hints/, explain.md, etc. — to their initial state.
-    let exercise_rel = Path::new("exercises").join(&info.dir);
-    let git_status = std::process::Command::new("git")
-        .arg("checkout")
-        .arg("HEAD")
-        .arg("--")
+    // Phase 2: Remove untracked files (student-created files, build artifacts).
+    let _ = std::process::Command::new("git")
+        .args(["clean", "-fd", "--"])
         .arg(exercise_rel.to_string_lossy().as_ref())
         .current_dir(project_root)
         .status();
-
-    if let Err(e) = git_status {
-        output::print_warning(&format!(
-            "git checkout failed ({}), falling back to solution-only copy",
-            e
-        ));
-    }
-
-    // Phase 2: Overlay solution content on top of the restored exercise.
-    // This replaces student-editable files (src/, launch/, etc.) with the
-    // reference implementation while preserving infrastructure files.
-    for entry in std::fs::read_dir(&solutions_dir)
-        .with_context(|| format!("Failed to read {}", solutions_dir.display()))?
-    {
-        let entry = entry?;
-        let src_path = entry.path();
-        let dest_path = exercises_dir.join(entry.file_name());
-
-        if src_path.is_dir() {
-            if dest_path.is_dir() {
-                std::fs::remove_dir_all(&dest_path)
-                    .with_context(|| format!("Failed to clean {}", dest_path.display()))?;
-            }
-            copy_dir_recursive(&src_path, &dest_path)?;
-        } else {
-            std::fs::copy(&src_path, &dest_path)
-                .with_context(|| format!("Failed to reset {}", dest_path.display()))?;
-        }
-    }
 
     output::print_success(&format!("Exercise '{}' has been reset.", name));
     Ok(())
 }
 
+#[cfg(test)]
 fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<()> {
     if !dest.exists() {
         std::fs::create_dir_all(dest)

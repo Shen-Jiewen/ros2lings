@@ -31,34 +31,19 @@ TEST_F(TfTimeTravelTest, CanCreateNode) {
   ASSERT_NE(node, nullptr);
 }
 
-TEST_F(TfTimeTravelTest, BufferExists) {
-  auto node = std::make_shared<TfTimeTravelNode>();
-  ASSERT_NE(node->get_buffer(), nullptr);
-}
-
-TEST_F(TfTimeTravelTest, ExceptionHandlingWorks) {
-  // The student's timer_callback must handle tf2::TransformException (BUG 3).
-  // Without any transform data, lookupTransform throws. A correct catch block
-  // prevents the node from crashing.
-  auto node = std::make_shared<TfTimeTravelNode>();
-  auto buffer = node->get_buffer();
-
-  // Attempt a lookup with no data — should throw, which student must catch
-  bool threw = false;
-  try {
-    buffer->lookupTransform("world", "robot", tf2::TimePointZero);
-  } catch (const tf2::TransformException &) {
-    threw = true;
-  }
-  EXPECT_TRUE(threw) << "lookupTransform should throw when no data is available";
-}
-
-TEST_F(TfTimeTravelTest, LookupSucceedsWithInjectedTransform) {
-  // With transform data injected into the buffer, lookupTransform with
-  // TimePointZero (BUG 1 fix) and positive timeout (BUG 2 fix) should succeed.
+TEST_F(TfTimeTravelTest, TimerCallbackSucceedsWithTransformData) {
+  // This test verifies the student's timer_callback actually works:
+  // 1. Inject a transform into the buffer
+  // 2. Spin the node so the timer fires and timer_callback executes
+  // 3. Check that lookup_succeeded_ becomes true
+  //
+  // With the buggy code (future timestamp), lookupTransform always fails
+  // because no transform data exists 10 seconds in the future.
+  // Only the fixed code (tf2::TimePointZero) will find the injected data.
   auto node = std::make_shared<TfTimeTravelNode>();
   auto buffer = node->get_buffer();
 
+  // Inject a transform at the current time
   geometry_msgs::msg::TransformStamped t;
   t.header.stamp = node->now();
   t.header.frame_id = "world";
@@ -69,39 +54,46 @@ TEST_F(TfTimeTravelTest, LookupSucceedsWithInjectedTransform) {
   t.transform.rotation.w = 1.0;
   buffer->setTransform(t, "test_authority", true);
 
-  // Using TimePointZero should succeed (BUG 1: student must not use future time)
-  try {
-    auto result = buffer->lookupTransform("world", "robot", tf2::TimePointZero);
-    EXPECT_DOUBLE_EQ(result.transform.translation.x, 1.0);
-    EXPECT_DOUBLE_EQ(result.transform.translation.y, 2.0);
-    EXPECT_DOUBLE_EQ(result.transform.translation.z, 3.0);
-  } catch (const tf2::TransformException & ex) {
-    FAIL() << "lookupTransform should succeed with injected data: " << ex.what();
+  // Spin the node so the timer (500ms) fires at least once
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(node);
+
+  auto start = std::chrono::steady_clock::now();
+  while ((std::chrono::steady_clock::now() - start) < 2s) {
+    executor.spin_some(50ms);
+    if (node->get_lookup_succeeded()) {
+      break;
+    }
   }
+
+  ASSERT_GT(node->get_callback_count(), 0)
+    << "timer_callback should have been called at least once";
+  EXPECT_TRUE(node->get_lookup_succeeded())
+    << "timer_callback's lookupTransform should succeed with injected data. "
+       "Make sure you use tf2::TimePointZero (not a future timestamp) and "
+       "a non-zero timeout.";
 }
 
-TEST_F(TfTimeTravelTest, CanLookupWithTimePointZero) {
+TEST_F(TfTimeTravelTest, CallbackHandlesNoData) {
+  // Without any transform data, timer_callback should not crash.
+  // This verifies the student's exception handling (BUG 3).
   auto node = std::make_shared<TfTimeTravelNode>();
-  auto buffer = node->get_buffer();
 
-  // Manually inject a transform into the buffer
-  geometry_msgs::msg::TransformStamped t;
-  t.header.stamp = node->now();
-  t.header.frame_id = "world";
-  t.child_frame_id = "robot";
-  t.transform.translation.x = 1.0;
-  t.transform.translation.y = 2.0;
-  t.transform.translation.z = 3.0;
-  t.transform.rotation.w = 1.0;
-  buffer->setTransform(t, "test_authority", true);
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(node);
 
-  // Using TimePointZero should succeed (verifies student uses TimePointZero, not future time)
-  try {
-    auto result = buffer->lookupTransform("world", "robot", tf2::TimePointZero);
-    EXPECT_DOUBLE_EQ(result.transform.translation.x, 1.0);
-    EXPECT_DOUBLE_EQ(result.transform.translation.y, 2.0);
-    EXPECT_DOUBLE_EQ(result.transform.translation.z, 3.0);
-  } catch (const tf2::TransformException & ex) {
-    FAIL() << "lookupTransform with TimePointZero should not fail: " << ex.what();
+  // Spin briefly — timer fires, lookupTransform throws, student must catch
+  auto start = std::chrono::steady_clock::now();
+  while ((std::chrono::steady_clock::now() - start) < 1s) {
+    executor.spin_some(50ms);
+    if (node->get_callback_count() > 0) {
+      break;
+    }
   }
+
+  ASSERT_GT(node->get_callback_count(), 0)
+    << "timer_callback should have been called at least once";
+  // If we get here without crashing, exception handling works
+  EXPECT_FALSE(node->get_lookup_succeeded())
+    << "lookup should fail when no transform data is available";
 }
