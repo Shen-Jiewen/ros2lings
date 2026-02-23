@@ -12,7 +12,7 @@ std::string answer_topic_exists_without_pub = "no";
 
 // ===== 结束 =====
 
-#ifndef TESTING_BUILD
+#ifndef ROS2LINGS_TEST
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);

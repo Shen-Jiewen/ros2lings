@@ -52,7 +52,7 @@ std::string answer_guaranteed_response = "FILL_IN";
 
 // ===== 结束 =====
 
-#ifndef TESTING_BUILD
+#ifndef ROS2LINGS_TEST
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);

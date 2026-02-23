@@ -183,8 +183,28 @@ fn cmd_reset(project_root: &Path, state: &AppState, name: &str) -> Result<()> {
         );
     }
 
-    // Phase 1: Copy all solution content (files and directories) to the exercise.
-    let mut solution_dirs: std::collections::HashSet<String> = std::collections::HashSet::new();
+    // Phase 1: Restore the entire exercise directory from git.
+    // This recovers ALL files — CMakeLists.txt, package.xml, test/, msg/,
+    // action/, config/, hints/, explain.md, etc. — to their initial state.
+    let exercise_rel = Path::new("exercises").join(&info.dir);
+    let git_status = std::process::Command::new("git")
+        .arg("checkout")
+        .arg("HEAD")
+        .arg("--")
+        .arg(exercise_rel.to_string_lossy().as_ref())
+        .current_dir(project_root)
+        .status();
+
+    if let Err(e) = git_status {
+        output::print_warning(&format!(
+            "git checkout failed ({}), falling back to solution-only copy",
+            e
+        ));
+    }
+
+    // Phase 2: Overlay solution content on top of the restored exercise.
+    // This replaces student-editable files (src/, launch/, etc.) with the
+    // reference implementation while preserving infrastructure files.
     for entry in std::fs::read_dir(&solutions_dir)
         .with_context(|| format!("Failed to read {}", solutions_dir.display()))?
     {
@@ -193,8 +213,6 @@ fn cmd_reset(project_root: &Path, state: &AppState, name: &str) -> Result<()> {
         let dest_path = exercises_dir.join(entry.file_name());
 
         if src_path.is_dir() {
-            let dir_name = entry.file_name().to_string_lossy().to_string();
-            solution_dirs.insert(dir_name);
             if dest_path.is_dir() {
                 std::fs::remove_dir_all(&dest_path)
                     .with_context(|| format!("Failed to clean {}", dest_path.display()))?;
@@ -204,37 +222,6 @@ fn cmd_reset(project_root: &Path, state: &AppState, name: &str) -> Result<()> {
             std::fs::copy(&src_path, &dest_path)
                 .with_context(|| format!("Failed to reset {}", dest_path.display()))?;
         }
-    }
-
-    // Phase 2: Remove orphan content-subdirs that exist in exercise but not in solution.
-    let content_subdirs = ["src", "launch", "urdf", "srv", "msg", "action", "config"];
-    for subdir in &content_subdirs {
-        if !solution_dirs.contains(*subdir) {
-            let ex_sub = exercises_dir.join(subdir);
-            if ex_sub.is_dir() {
-                std::fs::remove_dir_all(&ex_sub)
-                    .with_context(|| format!("Failed to remove orphan {}", ex_sub.display()))?;
-            }
-        }
-    }
-
-    // Phase 3: Restore exercise-only files (CMakeLists.txt, package.xml, test/)
-    // from git. These aren't in solutions/ so we use git checkout.
-    let exercise_rel = Path::new("exercises").join(&info.dir);
-    let restore_targets: Vec<String> = ["CMakeLists.txt", "package.xml", "test"]
-        .iter()
-        .map(|f| exercise_rel.join(f).to_string_lossy().into_owned())
-        .filter(|p| project_root.join(p).exists())
-        .collect();
-
-    if !restore_targets.is_empty() {
-        let mut cmd = std::process::Command::new("git");
-        cmd.arg("checkout").arg("HEAD").arg("--");
-        for target in &restore_targets {
-            cmd.arg(target);
-        }
-        cmd.current_dir(project_root);
-        let _ = cmd.status(); // Best-effort; ignore if git is unavailable
     }
 
     output::print_success(&format!("Exercise '{}' has been reset.", name));

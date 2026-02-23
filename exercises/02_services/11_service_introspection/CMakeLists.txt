@@ -17,7 +17,7 @@ if(BUILD_TESTING)
   # 将源文件编译为库供测试使用
   add_library(service_introspection_lib src/service_introspection.cpp)
   ament_target_dependencies(service_introspection_lib rclcpp)
-  set_target_properties(service_introspection_lib PROPERTIES COMPILE_DEFINITIONS "TESTING_BUILD")
+  target_compile_definitions(service_introspection_lib PRIVATE ROS2LINGS_TEST)
 
   ament_add_gtest(test_service_introspection test/test_service_introspection.cpp)
   ament_target_dependencies(test_service_introspection rclcpp)

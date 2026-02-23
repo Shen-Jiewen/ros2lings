@@ -14,7 +14,7 @@ std::string answer_guaranteed_response = "yes";
 
 // ===== 结束 =====
 
-#ifndef TESTING_BUILD
+#ifndef ROS2LINGS_TEST
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);

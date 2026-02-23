@@ -16,7 +16,7 @@ if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   add_library(node_lifecycle_basics_lib src/node_lifecycle_basics.cpp)
   ament_target_dependencies(node_lifecycle_basics_lib rclcpp)
-  set_target_properties(node_lifecycle_basics_lib PROPERTIES COMPILE_DEFINITIONS "TESTING_BUILD")
+  target_compile_definitions(node_lifecycle_basics_lib PRIVATE ROS2LINGS_TEST)
 
   ament_add_gtest(test_node_lifecycle_basics test/test_node_lifecycle_basics.cpp)
   ament_target_dependencies(test_node_lifecycle_basics rclcpp)
